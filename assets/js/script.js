@@ -95,29 +95,46 @@ const btnRegister = document.getElementById('btnRegister');
 
 async function initApp() {
     const token = localStorage.getItem('homepage_token');
+    const authHeading = authOverlay.querySelector('h2');
 
-    // Если токена нет, показываем окно логина
     if (!token) {
+        // No token, show normal login form
         authOverlay.classList.add('active');
     } else {
-        // Пробуем загрузить данные. Если токен протух - покажет ошибку и сбросит
+        // Token exists! Instantly hide the form while we verify with the server
+        authForm.style.display = 'none';
+        authHeading.textContent = 'Loading workspace...';
+
         await loadAndRenderWorkspace();
     }
 }
 
 async function loadAndRenderWorkspace() {
     const data = await DashboardData.load();
+    const authHeading = authOverlay.querySelector('h2');
+
     if (data) {
+        // Token is valid and data loaded! Hide the overlay completely
         authOverlay.classList.remove('active');
         console.log("Ready to build UI with:", data);
 
-        // Позже здесь мы вызовем функцию buildWorkspaces(data), 
-        // которая сгенерирует весь HTML!
+        // Restore the form state in the background for future logouts
+        setTimeout(() => {
+            authForm.style.display = 'block';
+            authHeading.textContent = 'Workspace';
+        }, 500);
+
+        // HERE WE WILL CALL buildWorkspaces(data)
+
     } else {
-        // Токен не подошел (например, удален из БД)
+        // Token is invalid or expired
         localStorage.removeItem('homepage_token');
+        authForm.style.display = 'block';
+        authHeading.textContent = 'Workspace';
         authOverlay.classList.add('active');
     }
+
+    buildWorkspaces(data);
 }
 
 // Слушатель на кнопку Login (срабатывает и по Enter в инпуте)
@@ -163,6 +180,132 @@ btnRegister.addEventListener('click', async () => {
 
 // Запускаем проверку при загрузке страницы
 initApp();
+
+// =========================================
+// STATE MANAGEMENT & RENDER
+// =========================================
+
+// Default state for new users
+const defaultState = {
+    workspaces: [
+        {
+            id: "ws-1",
+            title: "Base / Life",
+            items: [
+                {
+                    id: "item-wp",
+                    type: "icon",
+                    title: "Wikipedia",
+                    url: "https://wikipedia.org",
+                    icon: "https://icon.horse/icon/wikipedia.org"
+                },
+                {
+                    id: "item-ff",
+                    type: "single",
+                    title: "Firefox",
+                    url: "https://firefox.com",
+                    icon: "https://icon.horse/icon/firefox.com"
+                },
+                {
+                    id: "group-1", type: "group", title: "Google Apps",
+                    links: [
+                        { id: "sub-1", title: "Gmail", url: "https://mail.google.com", icon: "https://icon.horse/icon/mail.google.com" },
+                        { id: "sub-2", title: "Calendar", url: "https://calendar.google.com", icon: "https://icon.horse/icon/calendar.google.com" }
+                    ]
+                }
+            ]
+        },
+        {
+            id: "ws-2",
+            title: "Dev / Projects",
+            items: [
+                { id: "item-github", type: "single", title: "GitHub", url: "https://github.com", icon: "https://icon.horse/icon/github.com" }
+            ]
+        }
+    ]
+};
+
+function buildWorkspaces(state) {
+    const slider = document.getElementById('slider');
+    slider.innerHTML = ''; // Clear current content
+
+    // Fallback to default state if DB is completely empty
+    const workspacesData = (state && state.workspaces && state.workspaces.length > 0)
+        ? state.workspaces
+        : defaultState.workspaces;
+
+    workspacesData.forEach((ws, index) => {
+        // Create Section
+        const section = document.createElement('section');
+        section.className = 'workspace';
+        section.dataset.id = ws.id;
+
+        // Title
+        const title = document.createElement('div');
+        title.className = 'workspace-title';
+        title.textContent = ws.title;
+        section.appendChild(title);
+
+        // Grid
+        const grid = document.createElement('div');
+        grid.className = 'layout-grid';
+        grid.id = `grid-${index + 1}`;
+
+        // Populate Items
+        ws.items.forEach(item => {
+            if (item.type === 'icon') {
+                // Только иконка (как Wikipedia в примере)
+                grid.innerHTML += `
+            <a href="${item.url}" class="draggable-item card-icon" title="${item.title}" data-id="${item.id}">
+                <img src="${item.icon}" alt="${item.title}">
+            </a>
+        `;
+            } else if (item.type === 'single') {
+                // Иконка + Текст (как Firefox в примере)
+                grid.innerHTML += `
+            <a href="${item.url}" class="draggable-item card-single" title="${item.title}" data-id="${item.id}">
+                <img src="${item.icon}" alt="${item.title}"> ${item.title}
+            </a>
+        `;
+            } else if (item.type === 'group') {
+                const subLinksHTML = item.links.map(sub => `
+                    <a href="${sub.url}" class="sub-link" data-id="${sub.id}">
+                        <img src="${sub.icon}" alt="${sub.title}"> ${sub.title}
+                    </a>
+                `).join('');
+
+                const urlsArrayStr = `['${item.links.map(sub => sub.url).join("','")}']`;
+
+                grid.innerHTML += `
+                    <div class="draggable-item card-group" data-id="${item.id}">
+                        <div class="group-header" onclick="toggleGroup(this)">
+                            <div class="group-title">${item.title}</div>
+                            <button class="btn-open-all" title="Open All" onclick="openAll(event, ${urlsArrayStr})">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="group-dropdown">
+                            ${subLinksHTML}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        section.appendChild(grid);
+        slider.appendChild(section);
+    });
+
+    // Re-bind drag events to the newly created DOM elements
+    bindDragEvents();
+
+    // Update global variables for scrolling logic
+    totalSlides = workspacesData.length;
+}
 
 // Глобальный массив для хранения вычисленных цветов (по умолчанию синий, голубой, розовый)
 let dynamicAccents = ['168, 199, 250', '100, 180, 255', '255, 120, 180'];
