@@ -179,6 +179,12 @@ const DashboardData = {
 // =========================================
 // 3. CORE INITIALIZATION & AUTH LOGIC
 // =========================================
+MobileDragDrop.polyfill({
+    dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+});
+
+window.addEventListener('touchmove', function () { }, { passive: false });
+
 async function initApp() {
     const token = localStorage.getItem('homepage_token');
     const authHeading = authOverlay.querySelector('h2');
@@ -444,6 +450,46 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
+// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ ---
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+
+    // Если открыты модалки, поиск, или мы перетаскиваем карточку — блокируем свайп
+    if (isScrolling ||
+        document.getElementById('searchOverlay').classList.contains('active') ||
+        document.querySelector('.modal-overlay.active') ||
+        document.querySelector('.dragging') ||
+        editMode // В режиме редактирования лучше отключить, чтобы не мешало D&D
+    ) return;
+
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+
+    // Проверяем, что свайп был именно горизонтальным и достаточно длинным
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
+
+        if (diffX > 0) {
+            // Свайп влево (следующий экран)
+            if (currentSlide < totalSlides - 1) { currentSlide++; moveSlider(); }
+            else triggerBounce(1);
+        } else {
+            // Свайп вправо (предыдущий экран)
+            if (currentSlide > 0) { currentSlide--; moveSlider(); }
+            else triggerBounce(-1);
+        }
+    }
+}, { passive: true });
+
 function moveSlider() {
     isScrolling = true;
     slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
@@ -698,6 +744,7 @@ fetch('https://api.jolpi.ca/ergast/f1/current/next.json')
     .catch(() => {
         document.getElementById('f1-name').textContent = "API Offline";
         document.getElementById('f1-countdown').textContent = "--";
+        updateWorkspacePadding();
     });
 
 async function fetchWeather() {
@@ -979,6 +1026,23 @@ async function moveWorkspace(wsId, direction) {
     buildWorkspaces(currentState);
     moveSlider();
 }
+
+// =========================================
+// ДИНАМИЧЕСКАЯ ВЫСОТА ШАПКИ
+// =========================================
+function updateWorkspacePadding() {
+    const header = document.querySelector('.widgets');
+    if (header) {
+        // Берем высоту шапки + ее отступ сверху
+        const headerHeight = header.offsetHeight + header.offsetTop;
+        document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
+    }
+}
+
+// Обновляем при загрузке и при повороте экрана
+window.addEventListener('resize', updateWorkspacePadding);
+updateWorkspacePadding();
+setTimeout(updateWorkspacePadding, 1000); // На всякий случай, если шрифты подгрузятся позже
 
 // INITIALIZE APP
 initApp();
