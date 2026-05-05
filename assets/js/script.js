@@ -54,6 +54,18 @@ const defaultState = {
     ]
 };
 
+// Функция для защиты от XSS
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag));
+}
+
 // DOM Elements - Auth
 const authOverlay = document.getElementById('authOverlay');
 const authForm = document.getElementById('authForm');
@@ -165,6 +177,10 @@ const DashboardData = {
             return res.data;
         } else {
             console.error('❌ Failed to load data:', res.message);
+            // Если токен протух или невалиден, очищаем его и кидаем на форму входа
+            if (res.message.includes('expired') || res.message.includes('authorized')) {
+                Auth.logout();
+            }
             return null;
         }
     },
@@ -278,12 +294,10 @@ function applyWidgetSettings() {
 
     document.querySelector('.time-widget').style.display = s.showClock ? 'flex' : 'none';
 
-    // В info-widget первый элемент - погода, второй - Ф1
     const infoItems = document.querySelectorAll('.info-item');
     if (infoItems[0]) infoItems[0].style.display = s.showWeather ? 'flex' : 'none';
     if (infoItems[1]) infoItems[1].style.display = s.showF1 ? 'flex' : 'none';
 
-    // Пересчитываем отступ шапки после скрытия/показа
     setTimeout(updateWorkspacePadding, 50);
 }
 
@@ -303,11 +317,13 @@ function buildWorkspaces(state) {
         section.className = 'workspace';
         section.dataset.id = ws.id;
 
+        const safeWsTitle = escapeHTML(ws.title); // XSS Защита
+
         const titleWrapper = document.createElement('div');
         titleWrapper.className = 'workspace-title-wrapper';
         titleWrapper.innerHTML = `
             <button class="ws-move-btn" onclick="moveWorkspace('${ws.id}', -1)" ${index === 0 ? 'disabled' : ''} title="Move Left">◀</button>
-            <span class="workspace-title" onclick="if(editMode) openWsModal('${ws.id}')" title="Click to edit">${ws.title}</span>
+            <span class="workspace-title" onclick="if(editMode) openWsModal('${ws.id}')" title="Click to edit">${safeWsTitle}</span>
             <button class="ws-move-btn" onclick="moveWorkspace('${ws.id}', 1)" ${index === state.workspaces.length - 1 ? 'disabled' : ''} title="Move Right">▶</button>
         `;
         section.appendChild(titleWrapper);
@@ -317,6 +333,8 @@ function buildWorkspaces(state) {
         grid.id = `grid-${index + 1}`;
 
         ws.items.forEach(item => {
+            const safeItemTitle = escapeHTML(item.title); // XSS Защита
+
             const controlsHTML = `
                 <div class="card-controls">
                     <button type="button" class="control-btn edit" onclick="openItemModal(event, '${ws.id}', '${item.id}')" title="Edit">✎</button>
@@ -326,24 +344,27 @@ function buildWorkspaces(state) {
 
             if (item.type === 'icon') {
                 grid.innerHTML += `
-                    <a href="${item.url}" class="draggable-item card-icon" title="${item.title}" data-id="${item.id}">
+                    <a href="${item.url}" class="draggable-item card-icon" title="${safeItemTitle}" data-id="${item.id}">
                         ${controlsHTML}
-                        <img src="${item.icon}" alt="${item.title}">
+                        <img src="${item.icon}" alt="${safeItemTitle}">
                     </a>
                 `;
             } else if (item.type === 'single') {
                 grid.innerHTML += `
-                    <a href="${item.url}" class="draggable-item card-single" title="${item.title}" data-id="${item.id}">
+                    <a href="${item.url}" class="draggable-item card-single" title="${safeItemTitle}" data-id="${item.id}">
                         ${controlsHTML}
-                        <img src="${item.icon}" alt="${item.title}"> ${item.title}
+                        <img src="${item.icon}" alt="${safeItemTitle}"> ${safeItemTitle}
                     </a>
                 `;
             } else if (item.type === 'group') {
-                const subLinksHTML = item.links.map(sub => `
+                const subLinksHTML = item.links.map(sub => {
+                    const safeSubTitle = escapeHTML(sub.title); // XSS Защита
+                    return `
                     <a href="${sub.url}" class="sub-link" data-id="${sub.id}">
-                        <img src="${sub.icon}" alt="${sub.title}"> ${sub.title}
+                        <img src="${sub.icon}" alt="${safeSubTitle}"> ${safeSubTitle}
                     </a>
-                `).join('');
+                    `;
+                }).join('');
 
                 const urlsArrayStr = `['${item.links.map(sub => sub.url).join("','")}']`;
 
@@ -351,7 +372,7 @@ function buildWorkspaces(state) {
                     <div class="draggable-item card-group" data-id="${item.id}">
                         ${controlsHTML}
                         <div class="group-header" onclick="toggleGroup(this)">
-                            <div class="group-title">${item.title}</div>
+                            <div class="group-title">${safeItemTitle}</div>
                             <button class="btn-open-all" title="Open All" onclick="openAll(event, ${urlsArrayStr})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -432,7 +453,6 @@ function fetchAnimeBackgrounds(count = 1) {
         const ws = currentState.workspaces[i];
         let bgUrl = '';
 
-        // Проверяем, есть ли у экрана свои обои
         if (ws && ws.customBg) {
             bgUrl = ws.customBg;
         } else {
@@ -486,7 +506,6 @@ let isSwiping = false;
 let swipeDirectionDetermined = false;
 
 document.addEventListener('touchstart', e => {
-    // Блокируем свайп, если открыты модалки, поиск или включен режим редактирования (D&D)
     if (isScrolling ||
         document.getElementById('searchOverlay').classList.contains('active') ||
         document.querySelector('.modal-overlay.active') ||
@@ -499,7 +518,6 @@ document.addEventListener('touchstart', e => {
     isSwiping = true;
     swipeDirectionDetermined = false;
 
-    // Добавляем класс, чтобы экран ехал ровно за пальцем без задержек
     slider.classList.add('swiping');
 }, { passive: true });
 
@@ -511,22 +529,20 @@ document.addEventListener('touchmove', e => {
     const diffX = touchStartX - touchCurrentX;
     const diffY = touchStartY - touchCurrentY;
 
-    // В первые пиксели движения понимаем: свайпают вбок или скроллят вниз?
     if (!swipeDirectionDetermined) {
         if (Math.abs(diffX) > Math.abs(diffY)) {
-            swipeDirectionDetermined = 'horizontal'; // Свайпаем экраны
+            swipeDirectionDetermined = 'horizontal';
         } else if (Math.abs(diffY) > Math.abs(diffX)) {
-            swipeDirectionDetermined = 'vertical'; // Скроллим карточки
+            swipeDirectionDetermined = 'vertical';
             isSwiping = false;
             slider.classList.remove('swiping');
             slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
             return;
         } else {
-            return; // Ждем более явного движения
+            return;
         }
     }
 
-    // Если движение горизонтальное — тащим экран за пальцем
     if (swipeDirectionDetermined === 'horizontal') {
         const baseTranslate = -(currentSlide * window.innerWidth);
         slider.style.transform = `translateX(calc(${baseTranslate}px - ${diffX}px))`;
@@ -537,13 +553,11 @@ document.addEventListener('touchend', e => {
     if (!isSwiping) return;
     isSwiping = false;
 
-    // Возвращаем плавную анимацию для докрутки
     slider.classList.remove('swiping');
 
     const touchEndX = e.changedTouches[0].screenX;
     const diffX = touchStartX - touchEndX;
 
-    // Если свайпнули больше чем на 70px по горизонтали — переключаем экран
     if (swipeDirectionDetermined === 'horizontal' && Math.abs(diffX) > 70) {
         document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
 
@@ -552,13 +566,11 @@ document.addEventListener('touchend', e => {
         } else if (diffX < 0 && currentSlide > 0) {
             currentSlide--;
         } else {
-            // Если пытаются уехать дальше последнего/первого экрана — пружиним
             triggerBounce(diffX > 0 ? 1 : -1);
             return;
         }
     }
 
-    // Либо плавно едем на новый экран, либо возвращаемся на текущий (если свайп был слабым)
     moveSlider();
 }, { passive: true });
 
@@ -632,11 +644,9 @@ const bindDragEvents = () => {
         });
     });
 
-    // ВАЖНО: Добавляем слушатель "броска" (dragover) именно здесь, 
-    // так как сетки пересоздаются при каждом рендере воркспейсов!
     document.querySelectorAll('.layout-grid').forEach(grid => {
         grid.addEventListener('dragover', e => {
-            e.preventDefault(); // Это обязательно, чтобы разрешить "бросание" элементов
+            e.preventDefault();
             if (!editMode) return;
             const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
             const draggable = document.querySelector('.dragging');
@@ -869,12 +879,13 @@ btnAddSubLink.addEventListener('click', () => {
 function addSubLinkDOM(title, url) {
     const div = document.createElement('div');
     div.className = 'sub-link-row';
+    const safeTitle = escapeHTML(title); // XSS Защита для инпутов
     div.innerHTML = `
         <div class="sub-link-controls">
             <button type="button" class="btn-move-sub" onclick="moveSubLink(this, -1)" title="Move Up">▲</button>
             <button type="button" class="btn-move-sub" onclick="moveSubLink(this, 1)" title="Move Down">▼</button>
         </div>
-        <input type="text" placeholder="Title" value="${title}" class="sub-link-title" required>
+        <input type="text" placeholder="Title" value="${safeTitle}" class="sub-link-title" required>
         <input type="url" placeholder="URL" value="${url}" class="sub-link-url" required>
         <button type="button" class="btn-danger btn-small" onclick="this.parentElement.remove()">✖</button>
     `;
@@ -1040,13 +1051,13 @@ wsForm.addEventListener('submit', async (e) => {
         const ws = currentState.workspaces.find(w => w.id === wsId);
         if (ws) {
             ws.title = title;
-            ws.customBg = customBg; // Обновляем фон
+            ws.customBg = customBg;
         }
     } else {
         currentState.workspaces.push({
             id: 'ws-' + Date.now(),
             title: title,
-            customBg: customBg, // Задаем фон для нового экрана
+            customBg: customBg,
             items: []
         });
     }
@@ -1054,7 +1065,6 @@ wsForm.addEventListener('submit', async (e) => {
     await DashboardData.save(currentState);
     wsModal.classList.remove('active');
 
-    // НОВОЕ: Принудительно обновляем фоны (раньше они обновлялись только если менялось число экранов)
     fetchAnimeBackgrounds(currentState.workspaces.length);
 
     buildWorkspaces(currentState);
@@ -1104,7 +1114,6 @@ async function moveWorkspace(wsId, direction) {
 
     currentSlide = newIndex;
 
-    // Перерисовываем интерфейс
     buildWorkspaces(currentState);
     moveSlider();
 }
@@ -1118,7 +1127,6 @@ document.getElementById('inputUploadBg').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Ограничение в ~2.5 Мегабайта, чтобы JSON не стал слишком тяжелым для базы
     if (file.size > 2.5 * 1024 * 1024) {
         alert("File is too large! Please choose an image under 2.5 MB.");
         return;
@@ -1126,7 +1134,6 @@ document.getElementById('inputUploadBg').addEventListener('change', (e) => {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        // Вставляем длинную Base64 строку прямо в инпут
         document.getElementById('modalWsCustomBg').value = event.target.result;
     };
     reader.readAsDataURL(file);
@@ -1138,79 +1145,92 @@ document.getElementById('inputUploadBg').addEventListener('change', (e) => {
 function updateWorkspacePadding() {
     const header = document.querySelector('.widgets');
     if (header) {
-        // Берем высоту шапки + ее отступ сверху
         const headerHeight = header.offsetHeight + header.offsetTop;
         document.documentElement.style.setProperty('--header-height', `${headerHeight}px`);
     }
 }
 
-// Обновляем при загрузке и при повороте экрана
 window.addEventListener('resize', updateWorkspacePadding);
 updateWorkspacePadding();
-setTimeout(updateWorkspacePadding, 1000); // На всякий случай, если шрифты подгрузятся позже
+setTimeout(updateWorkspacePadding, 1000);
 
 // =========================================
 // НАСТРОЙКИ, БЭКАПЫ И ЛОГАУТ
 // =========================================
 const settingsModal = document.getElementById('settingsModal');
 
-document.getElementById('btnSettings').addEventListener('click', () => {
-    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
-    document.getElementById('settShowClock').checked = s.showClock;
-    document.getElementById('settShowWeather').checked = s.showWeather;
-    document.getElementById('settShowF1').checked = s.showF1;
-    settingsModal.classList.add('active');
-});
+if (document.getElementById('btnSettings')) {
+    document.getElementById('btnSettings').addEventListener('click', () => {
+        const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
+        document.getElementById('settShowClock').checked = s.showClock;
+        document.getElementById('settShowWeather').checked = s.showWeather;
+        document.getElementById('settShowF1').checked = s.showF1;
+        settingsModal.classList.add('active');
+    });
+}
 
-document.getElementById('btnCancelSettings').addEventListener('click', () => {
-    settingsModal.classList.remove('active');
-});
+if (document.getElementById('btnCancelSettings')) {
+    document.getElementById('btnCancelSettings').addEventListener('click', () => {
+        settingsModal.classList.remove('active');
+    });
+}
 
-document.getElementById('btnSaveSettings').addEventListener('click', async () => {
-    if (!currentState.settings) currentState.settings = {};
-    currentState.settings.showClock = document.getElementById('settShowClock').checked;
-    currentState.settings.showWeather = document.getElementById('settShowWeather').checked;
-    currentState.settings.showF1 = document.getElementById('settShowF1').checked;
+if (document.getElementById('btnSaveSettings')) {
+    document.getElementById('btnSaveSettings').addEventListener('click', async () => {
+        if (!currentState.settings) currentState.settings = {};
+        currentState.settings.showClock = document.getElementById('settShowClock').checked;
+        currentState.settings.showWeather = document.getElementById('settShowWeather').checked;
+        currentState.settings.showF1 = document.getElementById('settShowF1').checked;
 
-    applyWidgetSettings();
-    await DashboardData.save(currentState);
-    settingsModal.classList.remove('active');
-});
+        applyWidgetSettings();
+        await DashboardData.save(currentState);
+        settingsModal.classList.remove('active');
+    });
+}
 
 // Экспорт JSON
-document.getElementById('btnExportJson').addEventListener('click', () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentState, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "workspace_backup.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-});
+if (document.getElementById('btnExportJson')) {
+    document.getElementById('btnExportJson').addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentState, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "workspace_backup.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
+}
 
 // Импорт JSON
-document.getElementById('btnImportJsonTrigger').addEventListener('click', () => document.getElementById('inputImportJson').click());
-document.getElementById('inputImportJson').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        try {
-            const importedState = JSON.parse(event.target.result);
-            if (importedState.workspaces) {
-                currentState = importedState;
-                await DashboardData.save(currentState);
-                location.reload();
-            }
-        } catch (err) { alert("Invalid JSON file. Please upload a valid backup."); }
-    };
-    reader.readAsText(file);
-});
+if (document.getElementById('btnImportJsonTrigger')) {
+    document.getElementById('btnImportJsonTrigger').addEventListener('click', () => document.getElementById('inputImportJson').click());
+}
+
+if (document.getElementById('inputImportJson')) {
+    document.getElementById('inputImportJson').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const importedState = JSON.parse(event.target.result);
+                if (importedState.workspaces) {
+                    currentState = importedState;
+                    await DashboardData.save(currentState);
+                    location.reload();
+                }
+            } catch (err) { alert("Invalid JSON file. Please upload a valid backup."); }
+        };
+        reader.readAsText(file);
+    });
+}
 
 // Кнопка логаута
-document.getElementById('btnLogout').addEventListener('click', () => {
-    Auth.logout();
-});
+if (document.getElementById('btnLogout')) {
+    document.getElementById('btnLogout').addEventListener('click', () => {
+        Auth.logout();
+    });
+}
 
 // INITIALIZE APP
 initApp();
