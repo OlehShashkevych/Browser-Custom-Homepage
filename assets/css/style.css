@@ -39,7 +39,7 @@ body {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     background-size: cover;
     background-position: center;
     opacity: 0;
@@ -57,15 +57,20 @@ body {
     top: 0;
     left: 0;
     width: 300vw;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     transition: transform 0.8s var(--bezier);
     z-index: 5;
+    touch-action: pan-y;
+}
+
+.slider-container.swiping {
+    transition: none !important;
 }
 
 .workspace {
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -787,6 +792,48 @@ body.edit-mode .card-add {
     background: rgba(var(--accent-rgb), 0.1);
 }
 
+/* FAB - Настройки */
+.fab-settings {
+    position: fixed;
+    bottom: 3rem;
+    right: 8.5rem;
+    /* Слева от кнопки редактирования */
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.3s var(--bezier);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.fab-settings:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    transform: rotate(45deg);
+}
+
+.fab-settings svg {
+    width: 24px;
+    height: 24px;
+}
+
+#settingsModal input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+
 /* =========================================
    7. MODALS & FORMS
    ========================================= */
@@ -1081,6 +1128,13 @@ body.edit-mode .card-add {
         transform: translateY(0);
     }
 
+    .fab-settings {
+        bottom: 1.5rem;
+        right: 5.5rem;
+        width: 50px;
+        height: 50px;
+    }
+
     /* МИНИАТЮРНАЯ КНОПКА ПОИСКА (ПРЕВРАЩАЕМ В КРУГЛУЮ ИКОНКУ) */
     .search-trigger {
         bottom: 1.5rem;
@@ -1117,7 +1171,7 @@ body.edit-mode .card-add {
     .auth-card {
         padding: 1.5rem;
         margin: 1rem;
-        max-height: 90vh;
+        max-height: 90dvh;
         overflow-y: auto;
     }
 

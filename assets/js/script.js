@@ -23,6 +23,11 @@ const myWallpapers = [
 ];
 
 const defaultState = {
+    settings: {
+        showClock: true,
+        showWeather: true,
+        showF1: true
+    },
     workspaces: [
         {
             id: "ws-1",
@@ -148,7 +153,7 @@ const Auth = {
 
     logout() {
         localStorage.removeItem('homepage_token');
-        console.log('👋 Logged out successfully');
+        location.reload();
     }
 };
 
@@ -222,6 +227,7 @@ async function loadAndRenderWorkspace() {
     }, 500);
 
     buildWorkspaces(currentState);
+    applyWidgetSettings();
 }
 
 authForm.addEventListener('submit', async (e) => {
@@ -267,6 +273,20 @@ btnRegister.addEventListener('click', async () => {
 // =========================================
 // 4. RENDER ENGINE
 // =========================================
+function applyWidgetSettings() {
+    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
+
+    document.querySelector('.time-widget').style.display = s.showClock ? 'flex' : 'none';
+
+    // В info-widget первый элемент - погода, второй - Ф1
+    const infoItems = document.querySelectorAll('.info-item');
+    if (infoItems[0]) infoItems[0].style.display = s.showWeather ? 'flex' : 'none';
+    if (infoItems[1]) infoItems[1].style.display = s.showF1 ? 'flex' : 'none';
+
+    // Пересчитываем отступ шапки после скрытия/показа
+    setTimeout(updateWorkspacePadding, 50);
+}
+
 function buildWorkspaces(state) {
     slider.innerHTML = '';
     if (!state || !state.workspaces) return;
@@ -409,14 +429,23 @@ function fetchAnimeBackgrounds(count = 1) {
     const fragment = document.createDocumentFragment();
 
     for (let i = 0; i < count; i++) {
-        if (pool.length === 0) pool.push(...myWallpapers);
-        const randomIndex = Math.floor(Math.random() * pool.length);
-        selected.push(pool.splice(randomIndex, 1)[0]);
+        const ws = currentState.workspaces[i];
+        let bgUrl = '';
 
+        // Проверяем, есть ли у экрана свои обои
+        if (ws && ws.customBg) {
+            bgUrl = ws.customBg;
+        } else {
+            if (pool.length === 0) pool.push(...myWallpapers);
+            const randomIndex = Math.floor(Math.random() * pool.length);
+            bgUrl = pool.splice(randomIndex, 1)[0];
+        }
+
+        selected.push(bgUrl);
         const layer = document.createElement('div');
         layer.className = i === currentSlide ? 'bg-layer active' : 'bg-layer';
         layer.id = `bg-${i + 1}`;
-        layer.style.backgroundImage = `url('${selected[i]}')`;
+        layer.style.backgroundImage = `url('${bgUrl}')`;
 
         fragment.appendChild(layer);
     }
@@ -450,44 +479,87 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
-// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ ---
+// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ПРИЛИПАНИЕ К ПАЛЬЦУ) ---
 let touchStartX = 0;
 let touchStartY = 0;
+let isSwiping = false;
+let swipeDirectionDetermined = false;
 
 document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-    const touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-
-    // Если открыты модалки, поиск, или мы перетаскиваем карточку — блокируем свайп
+    // Блокируем свайп, если открыты модалки, поиск или включен режим редактирования (D&D)
     if (isScrolling ||
         document.getElementById('searchOverlay').classList.contains('active') ||
         document.querySelector('.modal-overlay.active') ||
         document.querySelector('.dragging') ||
-        editMode // В режиме редактирования лучше отключить, чтобы не мешало D&D
+        editMode
     ) return;
 
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
+    touchStartX = e.touches[0].screenX;
+    touchStartY = e.touches[0].screenY;
+    isSwiping = true;
+    swipeDirectionDetermined = false;
 
-    // Проверяем, что свайп был именно горизонтальным и достаточно длинным
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-        document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
+    // Добавляем класс, чтобы экран ехал ровно за пальцем без задержек
+    slider.classList.add('swiping');
+}, { passive: true });
 
-        if (diffX > 0) {
-            // Свайп влево (следующий экран)
-            if (currentSlide < totalSlides - 1) { currentSlide++; moveSlider(); }
-            else triggerBounce(1);
+document.addEventListener('touchmove', e => {
+    if (!isSwiping) return;
+
+    const touchCurrentX = e.touches[0].screenX;
+    const touchCurrentY = e.touches[0].screenY;
+    const diffX = touchStartX - touchCurrentX;
+    const diffY = touchStartY - touchCurrentY;
+
+    // В первые пиксели движения понимаем: свайпают вбок или скроллят вниз?
+    if (!swipeDirectionDetermined) {
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            swipeDirectionDetermined = 'horizontal'; // Свайпаем экраны
+        } else if (Math.abs(diffY) > Math.abs(diffX)) {
+            swipeDirectionDetermined = 'vertical'; // Скроллим карточки
+            isSwiping = false;
+            slider.classList.remove('swiping');
+            slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+            return;
         } else {
-            // Свайп вправо (предыдущий экран)
-            if (currentSlide > 0) { currentSlide--; moveSlider(); }
-            else triggerBounce(-1);
+            return; // Ждем более явного движения
         }
     }
+
+    // Если движение горизонтальное — тащим экран за пальцем
+    if (swipeDirectionDetermined === 'horizontal') {
+        const baseTranslate = -(currentSlide * window.innerWidth);
+        slider.style.transform = `translateX(calc(${baseTranslate}px - ${diffX}px))`;
+    }
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+    if (!isSwiping) return;
+    isSwiping = false;
+
+    // Возвращаем плавную анимацию для докрутки
+    slider.classList.remove('swiping');
+
+    const touchEndX = e.changedTouches[0].screenX;
+    const diffX = touchStartX - touchEndX;
+
+    // Если свайпнули больше чем на 70px по горизонтали — переключаем экран
+    if (swipeDirectionDetermined === 'horizontal' && Math.abs(diffX) > 70) {
+        document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
+
+        if (diffX > 0 && currentSlide < totalSlides - 1) {
+            currentSlide++;
+        } else if (diffX < 0 && currentSlide > 0) {
+            currentSlide--;
+        } else {
+            // Если пытаются уехать дальше последнего/первого экрана — пружиним
+            triggerBounce(diffX > 0 ? 1 : -1);
+            return;
+        }
+    }
+
+    // Либо плавно едем на новый экран, либо возвращаемся на текущий (если свайп был слабым)
+    moveSlider();
 }, { passive: true });
 
 function moveSlider() {
@@ -947,6 +1019,7 @@ function openWsModal(wsId = null) {
         wsModalTitle.textContent = 'Edit Workspace';
         const ws = currentState.workspaces.find(w => w.id === wsId);
         modalWsTitle.value = ws.title;
+        document.getElementById('modalWsCustomBg').value = ws.customBg || '';
         btnDeleteWs.style.display = 'block';
     } else {
         wsModalTitle.textContent = 'Add New Workspace';
@@ -961,20 +1034,29 @@ wsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const wsId = modalWsIdEdit.value;
     const title = modalWsTitle.value;
+    const customBg = document.getElementById('modalWsCustomBg').value.trim();
 
     if (wsId) {
         const ws = currentState.workspaces.find(w => w.id === wsId);
-        if (ws) ws.title = title;
+        if (ws) {
+            ws.title = title;
+            ws.customBg = customBg; // Обновляем фон
+        }
     } else {
         currentState.workspaces.push({
             id: 'ws-' + Date.now(),
             title: title,
+            customBg: customBg, // Задаем фон для нового экрана
             items: []
         });
     }
 
     await DashboardData.save(currentState);
     wsModal.classList.remove('active');
+
+    // НОВОЕ: Принудительно обновляем фоны (раньше они обновлялись только если менялось число экранов)
+    fetchAnimeBackgrounds(currentState.workspaces.length);
+
     buildWorkspaces(currentState);
 
     if (!wsId) {
@@ -1027,6 +1109,29 @@ async function moveWorkspace(wsId, direction) {
     moveSlider();
 }
 
+// --- Загрузка локальных обоев (Base64) ---
+document.getElementById('btnUploadBg').addEventListener('click', () => {
+    document.getElementById('inputUploadBg').click();
+});
+
+document.getElementById('inputUploadBg').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Ограничение в ~2.5 Мегабайта, чтобы JSON не стал слишком тяжелым для базы
+    if (file.size > 2.5 * 1024 * 1024) {
+        alert("File is too large! Please choose an image under 2.5 MB.");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        // Вставляем длинную Base64 строку прямо в инпут
+        document.getElementById('modalWsCustomBg').value = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
 // =========================================
 // ДИНАМИЧЕСКАЯ ВЫСОТА ШАПКИ
 // =========================================
@@ -1043,6 +1148,69 @@ function updateWorkspacePadding() {
 window.addEventListener('resize', updateWorkspacePadding);
 updateWorkspacePadding();
 setTimeout(updateWorkspacePadding, 1000); // На всякий случай, если шрифты подгрузятся позже
+
+// =========================================
+// НАСТРОЙКИ, БЭКАПЫ И ЛОГАУТ
+// =========================================
+const settingsModal = document.getElementById('settingsModal');
+
+document.getElementById('btnSettings').addEventListener('click', () => {
+    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
+    document.getElementById('settShowClock').checked = s.showClock;
+    document.getElementById('settShowWeather').checked = s.showWeather;
+    document.getElementById('settShowF1').checked = s.showF1;
+    settingsModal.classList.add('active');
+});
+
+document.getElementById('btnCancelSettings').addEventListener('click', () => {
+    settingsModal.classList.remove('active');
+});
+
+document.getElementById('btnSaveSettings').addEventListener('click', async () => {
+    if (!currentState.settings) currentState.settings = {};
+    currentState.settings.showClock = document.getElementById('settShowClock').checked;
+    currentState.settings.showWeather = document.getElementById('settShowWeather').checked;
+    currentState.settings.showF1 = document.getElementById('settShowF1').checked;
+
+    applyWidgetSettings();
+    await DashboardData.save(currentState);
+    settingsModal.classList.remove('active');
+});
+
+// Экспорт JSON
+document.getElementById('btnExportJson').addEventListener('click', () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentState, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "workspace_backup.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+});
+
+// Импорт JSON
+document.getElementById('btnImportJsonTrigger').addEventListener('click', () => document.getElementById('inputImportJson').click());
+document.getElementById('inputImportJson').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            const importedState = JSON.parse(event.target.result);
+            if (importedState.workspaces) {
+                currentState = importedState;
+                await DashboardData.save(currentState);
+                location.reload();
+            }
+        } catch (err) { alert("Invalid JSON file. Please upload a valid backup."); }
+    };
+    reader.readAsText(file);
+});
+
+// Кнопка логаута
+document.getElementById('btnLogout').addEventListener('click', () => {
+    Auth.logout();
+});
 
 // INITIALIZE APP
 initApp();

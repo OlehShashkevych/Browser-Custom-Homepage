@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workspace Dashboard</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <link rel="stylesheet" href="assets/css/drag-drop.css">
     <link rel="stylesheet" href="assets/css/normalize.css">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -74,6 +74,16 @@
         </svg>
     </button>
 
+    <button class="fab-settings" id="btnSettings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+        </svg>
+    </button>
+
     <div class="modal-overlay" id="deleteConfirmModal">
         <div class="modal-card">
             <h3>Confirm Delete</h3>
@@ -93,6 +103,16 @@
                 <div class="form-group">
                     <label>Workspace Title</label>
                     <input type="text" id="modalWsTitle" placeholder="e.g., Work / Dev" required autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Wallpaper (URL or Local File)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="url" id="modalWsCustomBg" placeholder="https://..." style="flex: 1;">
+                        <button type="button" class="btn-secondary" id="btnUploadBg"
+                            style="padding: 0 1rem; flex: none;">📁</button>
+                        <input type="file" id="inputUploadBg" style="display: none;"
+                            accept="image/png, image/jpeg, image/webp">
+                    </div>
                 </div>
                 <div class="auth-actions">
                     <button type="submit" id="btnSaveWs">Save</button>
@@ -147,8 +167,47 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js"></script>
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <h3>Dashboard Settings</h3>
+
+            <div class="form-group">
+                <label>Visible Widgets</label>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                        <input type="checkbox" id="settShowClock"> Clock & Date
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                        <input type="checkbox" id="settShowWeather"> Weather
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                        <input type="checkbox" id="settShowF1"> Formula 1
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1.5rem;">
+                <label>Data & Backup</label>
+                <div class="auth-actions" style="margin-top: 10px;">
+                    <button type="button" id="btnExportJson" class="btn-secondary btn-small">Export JSON</button>
+                    <button type="button" id="btnImportJsonTrigger" class="btn-secondary btn-small">Import JSON</button>
+                    <input type="file" id="inputImportJson" style="display: none;" accept=".json">
+                </div>
+            </div>
+
+            <div class="auth-actions" style="margin-top: 2rem;">
+                <button type="button" id="btnSaveSettings">Save Settings</button>
+                <button type="button" class="btn-secondary" id="btnCancelSettings">Cancel</button>
+            </div>
+
+            <div style="margin-top: 1rem; text-align: center;">
+                <button type="button" class="btn-danger btn-small" id="btnLogout" style="width: 100%;">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/drag-drop.js"></script>
+    <script src="assets/js/scroll-behaviour.js"></script>
     <script src="assets/js/script.js"></script>
 </body>
 
