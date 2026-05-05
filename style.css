@@ -1,0 +1,448 @@
+:root {
+    --text-main: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --bezier: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+body {
+    /* Дефолтный синий цвет на долю секунды, пока считается настоящий */
+    --accent-rgb: 168, 199, 250;
+
+    /* Добавляем универсальные переменные, чтобы не дублировать код */
+    --card-bg: rgba(20, 20, 25, 0.45);
+    --card-border: rgba(var(--accent-rgb), 0.15);
+    --group-bg: rgba(30, 30, 35, 0.55);
+    --group-border: rgba(var(--accent-rgb), 0.25);
+
+    --accent: rgb(var(--accent-rgb));
+    color: var(--text-main);
+    overflow: hidden;
+    background-color: #000;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* =========================================
+   BACKGROUNDS
+   ========================================= */
+.bg-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    z-index: 1;
+    filter: brightness(0.6) blur(0);
+    transition: opacity 1.2s var(--bezier);
+}
+
+.bg-layer.active {
+    opacity: 1;
+}
+
+/* =========================================
+   WIDGETS
+   ========================================= */
+.widgets {
+    position: fixed;
+    top: 3rem;
+    left: 4rem;
+    right: 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.time-widget {
+    display: flex;
+    flex-direction: column;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.time-widget__clock {
+    font-size: 7rem;
+    font-weight: 200;
+    line-height: 0.9;
+    letter-spacing: -3px;
+}
+
+.time-widget__date {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 0.5rem;
+    margin-left: 0.5rem;
+}
+
+.info-widget {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.info-item__value {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.info-item__value--accent {
+    color: var(--accent);
+    transition: color 0.8s var(--bezier);
+}
+
+/* =========================================
+   SLIDER & GRID
+   ========================================= */
+.slider-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 300vw;
+    height: 100vh;
+    display: flex;
+    transition: transform 0.8s var(--bezier);
+    z-index: 5;
+}
+
+.workspace {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: 10vh;
+}
+
+.workspace-title {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-bottom: 3rem;
+    font-weight: 500;
+}
+
+.layout-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    max-width: 1100px;
+    width: 100%;
+    padding: 0 2rem;
+}
+
+/* =========================================
+   CARDS
+   ========================================= */
+.draggable-item {
+    height: 64px;
+    border-radius: 16px;
+    backdrop-filter: blur(15px);
+    text-decoration: none;
+    color: white;
+    border: 1px solid var(--card-border);
+    user-select: none;
+    transition: transform 0.3s var(--bezier), background 0.3s var(--bezier), border-color 0.3s var(--bezier), box-shadow 0.3s var(--bezier);
+}
+
+.draggable-item:hover {
+    background: rgba(var(--accent-rgb), 0.15) !important;
+    border-color: rgba(var(--accent-rgb), 0.5) !important;
+}
+
+.card-icon {
+    width: 64px;
+    background: var(--card-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-icon img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+.card-single {
+    background: var(--card-bg);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.card-single img {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+}
+
+/* =========================================
+   GROUP (DROPDOWN)
+   ========================================= */
+.card-group {
+    position: relative;
+    background: var(--group-bg);
+    border-color: var(--group-border);
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.group-header {
+    padding: 0 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+.group-title {
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: transform 0.3s var(--bezier);
+}
+
+.card-group:hover .group-title {
+    transform: translateX(-14px);
+}
+
+.btn-open-all {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%) translateX(-10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.3s var(--bezier);
+}
+
+.btn-open-all svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+}
+
+.card-group:hover .btn-open-all {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+.btn-open-all:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+.group-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 100%;
+    background: var(--group-bg);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
+    border-radius: 16px;
+    backdrop-filter: blur(25px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.95);
+    transition: all 0.3s var(--bezier), border-color 0.8s var(--bezier), background-color 0.8s var(--bezier);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 50;
+    transform-origin: top center;
+}
+
+.card-group.active .group-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.sub-link {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.sub-link:hover {
+    background: rgba(var(--accent-rgb), 0.15);
+    color: white;
+    padding-left: 1.5rem;
+}
+
+.sub-link img {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    opacity: 0.8;
+}
+
+.sub-link:hover img {
+    opacity: 1;
+}
+
+/* =========================================
+   DRAG & DROP (iOS Style Shake)
+   ========================================= */
+@keyframes iosShake {
+    0% {
+        transform: rotate(-2.5deg);
+    }
+
+    100% {
+        transform: rotate(2.5deg);
+    }
+}
+
+body.edit-mode .draggable-item {
+    animation: iosShake 0.14s infinite alternate ease-in-out;
+    cursor: grab !important;
+    z-index: 10;
+}
+
+body.edit-mode .draggable-item:nth-child(even) {
+    animation-direction: alternate-reverse;
+}
+
+body.edit-mode .draggable-item:active {
+    cursor: grabbing !important;
+}
+
+body.edit-mode .card-group .group-header {
+    pointer-events: none;
+}
+
+body.edit-mode .draggable-item.dragging {
+    animation: none !important;
+    opacity: 0.9;
+    transform: scale(1.08) rotate(0deg) !important;
+    z-index: 100;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    border-color: rgba(var(--accent-rgb), 0.8) !important;
+}
+
+/* =========================================
+   SEARCH OVERLAY & BUTTON 
+   ========================================= */
+.search-trigger {
+    position: fixed;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--card-border);
+    border-radius: 50px;
+    padding: 1rem 3rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.3s ease, border-color 0.8s var(--bezier), color 0.8s var(--bezier), background-color 0.8s var(--bezier);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.search-trigger:hover {
+    background: rgba(var(--accent-rgb), 0.15);
+    color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.6);
+    transform: translateX(-50%) translateY(-3px);
+}
+
+.search-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(25px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 100;
+}
+
+.search-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.search-form {
+    width: 100%;
+    max-width: 700px;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.4s var(--bezier);
+}
+
+.search-overlay.active .search-form {
+    transform: translateY(0) scale(1);
+}
+
+.search-input {
+    width: 100%;
+    padding: 1.5rem;
+    font-size: 2.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    outline: none;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    border-bottom-color: var(--accent);
+}
