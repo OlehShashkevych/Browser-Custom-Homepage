@@ -171,31 +171,49 @@ const Auth = {
 
 const DashboardData = {
     async load() {
-        const res = await apiRequest('get_state');
-        if (res.status === 'success') {
-            console.log('📦 Data loaded:', res.data);
-            return res.data;
-        } else {
-            console.error('❌ Failed to load data:', res.message);
-            // Если токен протух или невалиден, очищаем его и кидаем на форму входа
-            if (res.message.includes('expired') || res.message.includes('authorized')) {
-                Auth.logout();
+        try {
+            const res = await apiRequest('get_state');
+            if (res && res.status === 'success') {
+                console.log('📦 Data loaded from DB:', res.data);
+                // Сохраняем свежую копию в локальный кэш
+                localStorage.setItem('offline_state', JSON.stringify(res.data));
+                return res.data;
+            } else {
+                if (res && res.message && (res.message.includes('expired') || res.message.includes('authorized'))) {
+                    Auth.logout();
+                }
+                return null;
+            }
+        } catch (e) {
+            // ЕСЛИ ИНТЕРНЕТА НЕТ (ошибка сети):
+            console.warn('📶 Network offline. Loading local cache...');
+            const localData = localStorage.getItem('offline_state');
+            if (localData) {
+                return JSON.parse(localData);
             }
             return null;
         }
     },
 
     async save(stateObj) {
-        const res = await apiRequest('save_state', { data: stateObj });
-        if (res.status === 'success') {
-            console.log('💾 State successfully saved to DB!');
-        } else {
-            console.error('❌ Failed to save state:', res.message);
+        // Сначала всегда сохраняем локально
+        localStorage.setItem('offline_state', JSON.stringify(stateObj));
+
+        try {
+            const res = await apiRequest('save_state', { data: stateObj });
+            if (res && res.status === 'success') {
+                console.log('💾 State successfully saved to DB!');
+            } else {
+                console.error('❌ Failed to save state:', res ? res.message : 'Unknown error');
+            }
+            return res;
+        } catch (e) {
+            // Если сохраняем без сети - не выдаем ошибку пользователю
+            console.warn('📶 Network offline. State saved locally. Will sync later.');
+            return { status: 'success' }; // Имитируем успех, чтобы UI обновился
         }
-        return res;
     }
 };
-
 
 // =========================================
 // 3. CORE INITIALIZATION & AUTH LOGIC
@@ -1234,4 +1252,12 @@ if (document.getElementById('btnLogout')) {
 
 // INITIALIZE APP
 initApp();
-fetchAnimeBackgrounds();
+
+// --- РЕГИСТРАЦИЯ PWA SERVICE WORKER ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            console.log('✅ Service Worker registered');
+        }).catch(err => console.log('❌ SW registration failed', err));
+    });
+}
