@@ -1,3 +1,169 @@
+const API_URL = 'inc/api.php';
+
+// Universal function for API requests
+async function apiRequest(action, data = {}) {
+    const token = localStorage.getItem('homepage_token');
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    // Attach token if the user is authenticated
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const payload = { action, ...data };
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('Network or server error:', error);
+        return { status: 'error', message: 'Connection failed' };
+    }
+}
+
+// Authentication handlers (under the hood)
+const Auth = {
+    async register(username, password) {
+        const res = await apiRequest('register', { username, password });
+        if (res.status === 'success') {
+            localStorage.setItem('homepage_token', res.token);
+            console.log('✅ Registration successful, token saved!');
+        } else {
+            console.error('❌ Registration failed:', res.message);
+        }
+        return res;
+    },
+
+    async login(username, password) {
+        const res = await apiRequest('login', { username, password });
+        if (res.status === 'success') {
+            localStorage.setItem('homepage_token', res.token);
+            console.log('✅ Login successful, token saved!');
+        } else {
+            console.error('❌ Login failed:', res.message);
+        }
+        return res;
+    },
+
+    logout() {
+        localStorage.removeItem('homepage_token');
+        console.log('👋 Logged out successfully');
+        // UI re-render logic will go here later
+    }
+};
+
+// Workspace data management
+const DashboardData = {
+    async load() {
+        const res = await apiRequest('get_state');
+        if (res.status === 'success') {
+            console.log('📦 Data loaded:', res.data);
+            return res.data;
+        } else {
+            console.error('❌ Failed to load data:', res.message);
+            return null;
+        }
+    },
+
+    async save(stateObj) {
+        const res = await apiRequest('save_state', { data: stateObj });
+        if (res.status === 'success') {
+            console.log('💾 State successfully saved to DB!');
+        } else {
+            console.error('❌ Failed to save state:', res.message);
+        }
+        return res;
+    }
+};
+
+// =========================================
+// INIT & AUTH LOGIC
+// =========================================
+const authOverlay = document.getElementById('authOverlay');
+const authForm = document.getElementById('authForm');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const authMessage = document.getElementById('authMessage');
+const btnRegister = document.getElementById('btnRegister');
+
+async function initApp() {
+    const token = localStorage.getItem('homepage_token');
+
+    // Если токена нет, показываем окно логина
+    if (!token) {
+        authOverlay.classList.add('active');
+    } else {
+        // Пробуем загрузить данные. Если токен протух - покажет ошибку и сбросит
+        await loadAndRenderWorkspace();
+    }
+}
+
+async function loadAndRenderWorkspace() {
+    const data = await DashboardData.load();
+    if (data) {
+        authOverlay.classList.remove('active');
+        console.log("Ready to build UI with:", data);
+
+        // Позже здесь мы вызовем функцию buildWorkspaces(data), 
+        // которая сгенерирует весь HTML!
+    } else {
+        // Токен не подошел (например, удален из БД)
+        localStorage.removeItem('homepage_token');
+        authOverlay.classList.add('active');
+    }
+}
+
+// Слушатель на кнопку Login (срабатывает и по Enter в инпуте)
+authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authMessage.textContent = 'Logging in...';
+    authMessage.style.color = 'var(--text-muted)';
+
+    const res = await Auth.login(usernameInput.value, passwordInput.value);
+
+    if (res.status === 'success') {
+        authMessage.textContent = '';
+        usernameInput.value = '';
+        passwordInput.value = '';
+        await loadAndRenderWorkspace();
+    } else {
+        authMessage.style.color = '#ff6b6b';
+        authMessage.textContent = res.message;
+    }
+});
+
+// Слушатель на кнопку Register
+btnRegister.addEventListener('click', async () => {
+    if (!usernameInput.value || passwordInput.value.length < 6) {
+        authMessage.style.color = '#ff6b6b';
+        authMessage.textContent = 'Username required, password min 6 chars';
+        return;
+    }
+
+    authMessage.textContent = 'Registering...';
+    authMessage.style.color = 'var(--text-muted)';
+
+    const res = await Auth.register(usernameInput.value, passwordInput.value);
+
+    if (res.status === 'success') {
+        authMessage.textContent = '';
+        await loadAndRenderWorkspace();
+    } else {
+        authMessage.style.color = '#ff6b6b';
+        authMessage.textContent = res.message;
+    }
+});
+
+// Запускаем проверку при загрузке страницы
+initApp();
+
 // Глобальный массив для хранения вычисленных цветов (по умолчанию синий, голубой, розовый)
 let dynamicAccents = ['168, 199, 250', '100, 180, 255', '255, 120, 180'];
 

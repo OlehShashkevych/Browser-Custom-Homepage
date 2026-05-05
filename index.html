@@ -6,11 +6,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Workspace Dashboard</title>
 
-    <link rel="stylesheet" href="normalize.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/normalize.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
 <body class="theme-0">
+    <div class="auth-overlay active" id="authOverlay">
+        <div class="auth-card">
+            <h2>Workspace</h2>
+            <form id="authForm">
+                <input type="text" id="username" placeholder="Username" required autocomplete="off">
+                <input type="password" id="password" placeholder="Password" required>
+                <div class="auth-actions">
+                    <button type="submit" id="btnLogin">Login</button>
+                    <button type="button" id="btnRegister" class="btn-secondary">Register</button>
+                </div>
+                <div id="authMessage" class="auth-message"></div>
+            </form>
+        </div>
+    </div>
 
     <div class="bg-layer active" id="bg-1"></div>
     <div class="bg-layer" id="bg-2"></div>
@@ -161,7 +175,7 @@
         </form>
     </div>
 
-    <script src="script.js"></script>
+    <script src="assets/js/script.js"></script>
 </body>
 
 </html>
