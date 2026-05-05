@@ -363,6 +363,10 @@ function buildWorkspaces(state) {
 
     bindDragEvents();
     totalSlides = state.workspaces.length;
+
+    if (editMode) {
+        document.querySelectorAll('.draggable-item').forEach(i => i.setAttribute('draggable', 'true'));
+    }
 }
 
 
@@ -509,6 +513,22 @@ const bindDragEvents = () => {
             await DashboardData.save(currentState);
         });
     });
+
+    // ВАЖНО: Добавляем слушатель "броска" (dragover) именно здесь, 
+    // так как сетки пересоздаются при каждом рендере воркспейсов!
+    document.querySelectorAll('.layout-grid').forEach(grid => {
+        grid.addEventListener('dragover', e => {
+            e.preventDefault(); // Это обязательно, чтобы разрешить "бросание" элементов
+            if (!editMode) return;
+            const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
+            const draggable = document.querySelector('.dragging');
+            if (draggable && afterElement == null) {
+                grid.appendChild(draggable);
+            } else if (draggable) {
+                grid.insertBefore(draggable, afterElement);
+            }
+        });
+    });
 };
 
 function startPress(e) {
@@ -534,33 +554,18 @@ function exitEditMode() {
     }
 }
 
-document.querySelectorAll('.layout-grid').forEach(grid => {
-    grid.addEventListener('dragover', e => {
-        e.preventDefault();
-        if (!editMode) return;
-        const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
-        const draggable = document.querySelector('.dragging');
-        if (draggable && afterElement == null) {
-            grid.appendChild(draggable);
-        } else if (draggable) {
-            grid.insertBefore(draggable, afterElement);
-        }
-    });
-});
-
 function getDragAfterElement(container, x, y) {
     const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')];
 
-    return draggableElements.reduce((closest, child) => {
+    return draggableElements.find(child => {
         const box = child.getBoundingClientRect();
-        const offset = x - (box.left + box.width / 2);
-        const verticalOffset = y - (box.top + box.height / 2);
-        if (verticalOffset < 0 && verticalOffset > closest.offset) {
-            return { offset: verticalOffset, element: child };
-        } else {
-            return closest;
+        const isSameRow = y >= box.top && y <= box.bottom;
+
+        if (isSameRow) {
+            return x < box.left + box.width / 2;
         }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+        return y < box.top;
+    });
 }
 
 document.addEventListener('click', (e) => {
@@ -570,7 +575,9 @@ document.addEventListener('click', (e) => {
         !e.target.closest('.fab-edit') &&
         !e.target.closest('.modal-overlay') &&
         !e.target.closest('.ws-edit-btn') &&
-        !e.target.closest('.fab-add-ws')
+        !e.target.closest('.fab-add-ws') &&
+        !e.target.closest('.ws-move-btn') &&
+        !e.target.closest('.workspace-title')
     ) {
         exitEditMode();
     }
@@ -580,6 +587,7 @@ btnEditMode.addEventListener('click', (e) => {
     e.stopPropagation();
     document.body.classList.toggle('edit-mode');
     editMode = document.body.classList.contains('edit-mode');
+    document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
 
     document.querySelectorAll('.draggable-item').forEach(i => {
         if (editMode) {
@@ -743,12 +751,27 @@ function addSubLinkDOM(title, url) {
     const div = document.createElement('div');
     div.className = 'sub-link-row';
     div.innerHTML = `
+        <div class="sub-link-controls">
+            <button type="button" class="btn-move-sub" onclick="moveSubLink(this, -1)" title="Move Up">▲</button>
+            <button type="button" class="btn-move-sub" onclick="moveSubLink(this, 1)" title="Move Down">▼</button>
+        </div>
         <input type="text" placeholder="Title" value="${title}" class="sub-link-title" required>
         <input type="url" placeholder="URL" value="${url}" class="sub-link-url" required>
         <button type="button" class="btn-danger btn-small" onclick="this.parentElement.remove()">✖</button>
     `;
     modalSubLinks.appendChild(div);
 }
+
+window.moveSubLink = function (btn, direction) {
+    const row = btn.closest('.sub-link-row');
+    const parent = row.parentElement;
+
+    if (direction === -1 && row.previousElementSibling) {
+        parent.insertBefore(row, row.previousElementSibling);
+    } else if (direction === 1 && row.nextElementSibling) {
+        parent.insertBefore(row.nextElementSibling, row);
+    }
+};
 
 function openItemModal(e, wsId, itemId = null) {
     e.preventDefault();
