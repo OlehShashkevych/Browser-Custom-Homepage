@@ -1,3 +1,6 @@
+/* =========================================
+   1. VARIABLES & BASE
+   ========================================= */
 :root {
     --text-main: #ffffff;
     --text-muted: rgba(255, 255, 255, 0.6);
@@ -8,13 +11,13 @@ body {
     /* Дефолтный синий цвет на долю секунды, пока считается настоящий */
     --accent-rgb: 168, 199, 250;
 
-    /* Добавляем универсальные переменные, чтобы не дублировать код */
+    /* Универсальные переменные */
     --card-bg: rgba(20, 20, 25, 0.45);
     --card-border: rgba(var(--accent-rgb), 0.15);
     --group-bg: rgba(30, 30, 35, 0.55);
     --group-border: rgba(var(--accent-rgb), 0.25);
-
     --accent: rgb(var(--accent-rgb));
+
     color: var(--text-main);
     overflow: hidden;
     background-color: #000;
@@ -29,7 +32,7 @@ body {
 }
 
 /* =========================================
-   BACKGROUNDS
+   2. BACKGROUNDS & LAYOUT
    ========================================= */
 .bg-layer {
     position: fixed;
@@ -49,8 +52,40 @@ body {
     opacity: 1;
 }
 
+.slider-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 300vw;
+    height: 100vh;
+    display: flex;
+    transition: transform 0.8s var(--bezier);
+    z-index: 5;
+}
+
+.workspace {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: 10vh;
+}
+
+.layout-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    max-width: 1100px;
+    width: 100%;
+    padding: 0 2rem;
+}
+
 /* =========================================
-   WIDGETS
+   3. WIDGETS (CLOCK, DATE, F1, WEATHER)
    ========================================= */
 .widgets {
     position: fixed;
@@ -116,53 +151,186 @@ body {
 }
 
 /* =========================================
-   SLIDER & GRID
+   4. OVERLAYS (AUTH & SEARCH)
    ========================================= */
-.slider-container {
+/* Auth Overlay */
+.auth-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 300vw;
-    height: 100vh;
+    inset: 0;
+    background: #000;
+    background-image: url('/wallpapers/wallhaven-o37d1m.png');
+    background-size: cover;
+    background-position: center;
     display: flex;
-    transition: transform 0.8s var(--bezier);
-    z-index: 5;
-}
-
-.workspace {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding-top: 10vh;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s var(--bezier);
 }
 
-.workspace-title {
-    font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: var(--text-muted);
-    margin-bottom: 3rem;
-    font-weight: 500;
+.auth-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(15px);
 }
 
-.layout-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 1.5rem;
-    max-width: 1100px;
+.auth-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.auth-card {
+    position: relative;
+    z-index: 1;
+    background: rgba(30, 30, 35, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem;
+    border-radius: 24px;
+    text-align: center;
     width: 100%;
-    padding: 0 2rem;
+    max-width: 400px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(25px);
+}
+
+.auth-card h2 {
+    margin-top: 0;
+    font-weight: 500;
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    letter-spacing: 0.1em;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.auth-card input:focus {
+    border-color: var(--accent);
+}
+
+.auth-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.auth-actions button {
+    flex: 1;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+#btnLogin {
+    background: var(--accent);
+    color: #000;
+}
+
+#btnLogin:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+
+.auth-message {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: #ff6b6b;
+    min-height: 1rem;
+}
+
+/* Search Overlay */
+.search-trigger {
+    position: fixed;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--card-border);
+    border-radius: 50px;
+    padding: 1rem 3rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.3s ease, border-color 0.8s var(--bezier), color 0.8s var(--bezier), background-color 0.8s var(--bezier);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.search-trigger:hover {
+    background: rgba(var(--accent-rgb), 0.15);
+    color: var(--accent);
+    border-color: rgba(var(--accent-rgb), 0.6);
+    transform: translateX(-50%) translateY(-3px);
+}
+
+.search-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(25px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 100;
+}
+
+.search-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.search-form {
+    width: 100%;
+    max-width: 700px;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.4s var(--bezier);
+}
+
+.search-overlay.active .search-form {
+    transform: translateY(0) scale(1);
+}
+
+.search-input {
+    width: 100%;
+    padding: 1.5rem;
+    font-size: 2.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    outline: none;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    border-bottom-color: var(--accent);
 }
 
 /* =========================================
-   CARDS
+   5. CARDS & GROUPS (VIEW MODE)
    ========================================= */
 .draggable-item {
+    position: relative;
     height: 64px;
     border-radius: 16px;
     backdrop-filter: blur(15px);
@@ -206,11 +374,7 @@ body {
     border-radius: 6px;
 }
 
-/* =========================================
-   GROUP (DROPDOWN)
-   ========================================= */
 .card-group {
-    position: relative;
     background: var(--group-bg);
     border-color: var(--group-border);
     min-width: 200px;
@@ -331,26 +495,24 @@ body {
 }
 
 /* =========================================
-   DRAG & DROP (iOS Style Shake)
+   6. EDIT MODE & CONTROLS
    ========================================= */
-@keyframes iosShake {
-    0% {
-        transform: rotate(-2.5deg);
-    }
+body.edit-mode .bg-layer.active {
+    filter: brightness(0.25) blur(12px) !important;
+    transform: scale(1.05);
+}
 
-    100% {
-        transform: rotate(2.5deg);
-    }
+.layout-grid {
+    transition: transform 0.4s var(--bezier);
+}
+
+body.edit-mode .layout-grid {
+    transform: scale(0.92);
 }
 
 body.edit-mode .draggable-item {
-    animation: iosShake 0.14s infinite alternate ease-in-out;
     cursor: grab !important;
     z-index: 10;
-}
-
-body.edit-mode .draggable-item:nth-child(even) {
-    animation-direction: alternate-reverse;
 }
 
 body.edit-mode .draggable-item:active {
@@ -362,201 +524,348 @@ body.edit-mode .card-group .group-header {
 }
 
 body.edit-mode .draggable-item.dragging {
-    animation: none !important;
     opacity: 0.9;
-    transform: scale(1.08) rotate(0deg) !important;
+    transform: scale(1.08);
     z-index: 100;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     border-color: rgba(var(--accent-rgb), 0.8) !important;
 }
 
-/* =========================================
-   SEARCH OVERLAY & BUTTON 
-   ========================================= */
-.search-trigger {
+body.edit-mode .btn-open-all {
+    display: none;
+}
+
+/* Кнопки Edit/Delete на карточках */
+.card-controls {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s var(--bezier);
+    z-index: 200;
+    transform: translateY(5px);
+}
+
+body.edit-mode .card-controls {
+    pointer-events: all;
+}
+
+body.edit-mode .draggable-item:hover .card-controls {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+body.edit-mode .draggable-item.dragging .card-controls {
+    display: none;
+}
+
+.control-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #1a1a1e;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    transition: 0.2s;
+    font-size: 12px;
+}
+
+.control-btn:hover {
+    transform: scale(1.15);
+}
+
+.control-btn.edit {
+    color: #4dabf7;
+}
+
+.control-btn.delete {
+    color: #ff6b6b;
+}
+
+/* Заголовок Воркспейса и карандаш */
+.workspace-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    justify-content: center;
+}
+
+.workspace-title {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 0;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.3s var(--bezier);
+}
+
+/* В режиме редактирования заголовок выглядит как кнопка */
+body.edit-mode .workspace-title {
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+body.edit-mode .workspace-title:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+}
+
+/* Стрелочки влево/вправо */
+.ws-move-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    padding: 0.5rem;
+    transform: scale(0.8);
+}
+
+body.edit-mode .ws-move-btn {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+}
+
+.ws-move-btn:hover {
+    color: var(--accent);
+    transform: scale(1.3) !important;
+}
+
+.ws-move-btn:disabled {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+body.edit-mode .ws-move-btn:disabled {
+    opacity: 0.1 !important;
+}
+
+/* FAB - Режим редактирования */
+.fab-edit {
     position: fixed;
     bottom: 3rem;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 4rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
     background: var(--card-bg);
     backdrop-filter: blur(15px);
     border: 1px solid var(--card-border);
-    border-radius: 50px;
-    padding: 1rem 3rem;
     color: var(--text-muted);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
     z-index: 20;
-    transition: all 0.3s ease, border-color 0.8s var(--bezier), color 0.8s var(--bezier), background-color 0.8s var(--bezier);
+    transition: all 0.3s var(--bezier);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-.search-trigger:hover {
-    background: rgba(var(--accent-rgb), 0.15);
-    color: var(--accent);
-    border-color: rgba(var(--accent-rgb), 0.6);
-    transform: translateX(-50%) translateY(-3px);
+.fab-edit:hover,
+body.edit-mode .fab-edit {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    transform: translateY(-3px);
 }
 
-.search-overlay {
+.fab-edit svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* FAB - Добавление Воркспейса */
+.fab-add-ws {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(25px);
+    top: 50%;
+    right: 2rem;
+    transform: translateY(-50%) translateX(20px);
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: rgba(var(--accent-rgb), 0.15);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(var(--accent-rgb), 0.5);
+    color: var(--accent);
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
+    z-index: 20;
+    transition: all 0.4s var(--bezier);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.4s ease;
-    z-index: 100;
 }
 
-.search-overlay.active {
+body.edit-mode .fab-add-ws {
     opacity: 1;
     pointer-events: all;
+    transform: translateY(-50%) translateX(0);
 }
 
-.search-form {
-    width: 100%;
-    max-width: 700px;
-    transform: translateY(20px) scale(0.95);
-    transition: all 0.4s var(--bezier);
+.fab-add-ws:hover {
+    background: var(--accent);
+    color: #000;
+    transform: translateY(-50%) scale(1.1);
 }
 
-.search-overlay.active .search-form {
-    transform: translateY(0) scale(1);
+.fab-add-ws svg {
+    width: 20px;
+    height: 20px;
 }
 
-.search-input {
-    width: 100%;
-    padding: 1.5rem;
-    font-size: 2.5rem;
+/* Карточка "Добавить Элемент" */
+.card-add {
+    display: none;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 16px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
     background: transparent;
-    border: none;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    outline: none;
-    text-align: center;
-    transition: border-color 0.3s ease;
+    color: var(--text-muted);
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.search-input:focus {
-    border-bottom-color: var(--accent);
+body.edit-mode .card-add {
+    display: flex;
+}
+
+.card-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.1);
 }
 
 /* =========================================
-   AUTH OVERLAY
+   7. MODALS & FORMS
    ========================================= */
-.auth-overlay {
+.modal-overlay {
     position: fixed;
-    inset: 0;
-    background: #000;
-    /* Можно задать дефолтную картинку для фона логин-экрана */
-    background-image: url('/wallpapers/wallhaven-o37d1m.png');
-    background-size: cover;
-    background-position: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s var(--bezier);
-}
-
-.auth-overlay::before {
-    content: '';
-    position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(15px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--bezier);
 }
 
-.auth-overlay.active {
+.modal-overlay.active {
     opacity: 1;
     pointer-events: all;
 }
 
-.auth-card {
-    position: relative;
-    z-index: 1;
-    background: rgba(30, 30, 35, 0.6);
+.modal-card {
+    background: rgba(30, 30, 35, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 3rem;
+    padding: 2.5rem;
     border-radius: 24px;
-    text-align: center;
     width: 100%;
-    max-width: 400px;
+    max-width: 450px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(25px);
 }
 
-.auth-card h2 {
+.modal-card h3 {
     margin-top: 0;
+    margin-bottom: 1.5rem;
     font-weight: 500;
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
-    letter-spacing: 0.1em;
+    font-size: 1.3rem;
 }
 
-.auth-card input {
+.form-group {
+    margin-bottom: 1.2rem;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.modal-card input,
+.modal-card select {
     width: 100%;
-    padding: 1rem;
-    margin-bottom: 1rem;
+    padding: 0.9rem;
     border-radius: 12px;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
     outline: none;
     transition: border-color 0.3s;
 }
 
-.auth-card input:focus {
+.modal-card input:focus,
+.modal-card select:focus {
     border-color: var(--accent);
 }
 
-.auth-actions {
+.sub-link-row {
     display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.auth-actions button {
-    flex: 1;
-    padding: 1rem;
+/* Базовые кнопки UI */
+.btn-secondary,
+#btnAddSubLink {
+    background: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
     border-radius: 12px;
-    border: none;
+    padding: 1rem;
     cursor: pointer;
     font-weight: 500;
     transition: all 0.3s;
 }
 
-#btnLogin {
-    background: var(--accent);
-    color: #000;
-}
-
-#btnLogin:hover {
-    filter: brightness(1.1);
-    transform: translateY(-2px);
-}
-
-.btn-secondary {
-    background: transparent;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-.btn-secondary:hover {
+.btn-secondary:hover,
+#btnAddSubLink:hover {
     background: rgba(255, 255, 255, 0.1);
 }
 
-.auth-message {
-    margin-top: 1rem;
-    font-size: 0.85rem;
-    color: #ff6b6b;
-    min-height: 1rem;
+.btn-small {
+    padding: 0.6rem 1rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 8px !important;
+    flex: none !important;
+    width: auto;
+}
+
+.btn-danger {
+    background: rgba(255, 107, 107, 0.1) !important;
+    color: #ff6b6b !important;
+    border: 1px solid rgba(255, 107, 107, 0.3) !important;
+    font-weight: 500;
+}
+
+.btn-danger:hover {
+    background: rgba(255, 107, 107, 0.25) !important;
 }

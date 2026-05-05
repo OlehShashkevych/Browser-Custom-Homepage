@@ -1,13 +1,109 @@
+// =========================================
+// 1. GLOBAL VARIABLES & DOM ELEMENTS
+// =========================================
 const API_URL = 'inc/api.php';
 
-// Universal function for API requests
+// Global State
+let currentState = null;
+let currentSlide = 0;
+let totalSlides = 0;
+let isScrolling = false;
+let editMode = false;
+let pressTimer;
+let itemToDelete = null; // {wsId, itemId}
+let dynamicAccents = ['168, 199, 250', '100, 180, 255', '255, 120, 180'];
+
+const myWallpapers = [
+    "/wallpapers/wallhaven-o37d1m.png", "/wallpapers/wallhaven-rrxz57.jpg",
+    "/wallpapers/wallhaven-rd6rdm.png", "/wallpapers/wallhaven-y8kjek.jpg",
+    "/wallpapers/wallhaven-zy7gew.png", "/wallpapers/wallhaven-z8987o.jpg",
+    "/wallpapers/wallhaven-85kd91.jpg", "/wallpapers/wallhaven-kxx38q.png",
+    "/wallpapers/wallhaven-72x61v.jpg", "/wallpapers/wallhaven-og5d8m.png",
+    "/wallpapers/wallhaven-pkdol3.jpg", "/wallpapers/wallhaven-3z7y83.jpg"
+];
+
+const defaultState = {
+    workspaces: [
+        {
+            id: "ws-1",
+            title: "Base / Life",
+            items: [
+                { id: "item-wp", type: "icon", title: "Wikipedia", url: "https://wikipedia.org", icon: "https://icon.horse/icon/wikipedia.org" },
+                { id: "item-ff", type: "single", title: "Firefox", url: "https://firefox.com", icon: "https://icon.horse/icon/firefox.com" },
+                {
+                    id: "group-1", type: "group", title: "Google Apps",
+                    links: [
+                        { id: "sub-1", title: "Gmail", url: "https://mail.google.com", icon: "https://icon.horse/icon/mail.google.com" },
+                        { id: "sub-2", title: "Calendar", url: "https://calendar.google.com", icon: "https://icon.horse/icon/calendar.google.com" }
+                    ]
+                }
+            ]
+        },
+        {
+            id: "ws-2",
+            title: "Dev / Projects",
+            items: [
+                { id: "item-github", type: "single", title: "GitHub", url: "https://github.com", icon: "https://icon.horse/icon/github.com" }
+            ]
+        }
+    ]
+};
+
+// DOM Elements - Auth
+const authOverlay = document.getElementById('authOverlay');
+const authForm = document.getElementById('authForm');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+const authMessage = document.getElementById('authMessage');
+const btnRegister = document.getElementById('btnRegister');
+
+// DOM Elements - Main UI
+const slider = document.getElementById('slider');
+const btnEditMode = document.getElementById('btnEditMode');
+
+// DOM Elements - Search
+const searchTrigger = document.getElementById('searchTrigger');
+const searchOverlay = document.getElementById('searchOverlay');
+const searchInput = document.getElementById('searchInput');
+const searchForm = document.getElementById('searchForm');
+
+// DOM Elements - Item Modal
+const itemModal = document.getElementById('itemModal');
+const itemForm = document.getElementById('itemForm');
+const modalWsId = document.getElementById('modalWsId');
+const modalItemId = document.getElementById('modalItemId');
+const modalItemType = document.getElementById('modalItemType');
+const modalItemTitle = document.getElementById('modalItemTitle');
+const modalItemUrl = document.getElementById('modalItemUrl');
+const modalTitle = document.getElementById('modalTitle');
+const modalUrlGroup = document.getElementById('modalUrlGroup');
+const modalLinksGroup = document.getElementById('modalLinksGroup');
+const modalSubLinks = document.getElementById('modalSubLinks');
+const btnAddSubLink = document.getElementById('btnAddSubLink');
+const btnCancelModal = document.getElementById('btnCancelModal');
+
+// DOM Elements - Workspace Modal
+const wsModal = document.getElementById('wsModal');
+const wsForm = document.getElementById('wsForm');
+const modalWsIdEdit = document.getElementById('modalWsIdEdit');
+const modalWsTitle = document.getElementById('modalWsTitle');
+const wsModalTitle = document.getElementById('wsModalTitle');
+const btnDeleteWs = document.getElementById('btnDeleteWs');
+const btnAddWorkspace = document.getElementById('btnAddWorkspace');
+
+// DOM Elements - Delete Confirm Modal
+const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+const btnCancelDelete = document.getElementById('btnCancelDelete');
+const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+
+
+// =========================================
+// 2. API & DATA MANAGEMENT
+// =========================================
 async function apiRequest(action, data = {}) {
     const token = localStorage.getItem('homepage_token');
-    const headers = {
-        'Content-Type': 'application/json'
-    };
+    const headers = { 'Content-Type': 'application/json' };
 
-    // Attach token if the user is authenticated
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
@@ -20,7 +116,6 @@ async function apiRequest(action, data = {}) {
             headers: headers,
             body: JSON.stringify(payload)
         });
-
         return await response.json();
     } catch (error) {
         console.error('Network or server error:', error);
@@ -28,7 +123,6 @@ async function apiRequest(action, data = {}) {
     }
 }
 
-// Authentication handlers (under the hood)
 const Auth = {
     async register(username, password) {
         const res = await apiRequest('register', { username, password });
@@ -55,11 +149,9 @@ const Auth = {
     logout() {
         localStorage.removeItem('homepage_token');
         console.log('👋 Logged out successfully');
-        // UI re-render logic will go here later
     }
 };
 
-// Workspace data management
 const DashboardData = {
     async load() {
         const res = await apiRequest('get_state');
@@ -83,28 +175,19 @@ const DashboardData = {
     }
 };
 
-// =========================================
-// INIT & AUTH LOGIC
-// =========================================
-const authOverlay = document.getElementById('authOverlay');
-const authForm = document.getElementById('authForm');
-const usernameInput = document.getElementById('username');
-const passwordInput = document.getElementById('password');
-const authMessage = document.getElementById('authMessage');
-const btnRegister = document.getElementById('btnRegister');
 
+// =========================================
+// 3. CORE INITIALIZATION & AUTH LOGIC
+// =========================================
 async function initApp() {
     const token = localStorage.getItem('homepage_token');
     const authHeading = authOverlay.querySelector('h2');
 
     if (!token) {
-        // No token, show normal login form
         authOverlay.classList.add('active');
     } else {
-        // Token exists! Instantly hide the form while we verify with the server
         authForm.style.display = 'none';
         authHeading.textContent = 'Loading workspace...';
-
         await loadAndRenderWorkspace();
     }
 }
@@ -113,31 +196,28 @@ async function loadAndRenderWorkspace() {
     const data = await DashboardData.load();
     const authHeading = authOverlay.querySelector('h2');
 
-    if (data) {
-        // Token is valid and data loaded! Hide the overlay completely
+    if (data && data.workspaces && data.workspaces.length > 0) {
+        currentState = data;
         authOverlay.classList.remove('active');
-        console.log("Ready to build UI with:", data);
-
-        // Restore the form state in the background for future logouts
-        setTimeout(() => {
-            authForm.style.display = 'block';
-            authHeading.textContent = 'Workspace';
-        }, 500);
-
-        // HERE WE WILL CALL buildWorkspaces(data)
-
     } else {
-        // Token is invalid or expired
-        localStorage.removeItem('homepage_token');
-        authForm.style.display = 'block';
-        authHeading.textContent = 'Workspace';
-        authOverlay.classList.add('active');
+        currentState = JSON.parse(JSON.stringify(defaultState));
+
+        if (localStorage.getItem('homepage_token')) {
+            authOverlay.classList.remove('active');
+            await DashboardData.save(currentState);
+        } else {
+            authOverlay.classList.add('active');
+        }
     }
 
-    buildWorkspaces(data);
+    setTimeout(() => {
+        authForm.style.display = 'block';
+        authHeading.textContent = 'Workspace';
+    }, 500);
+
+    buildWorkspaces(currentState);
 }
 
-// Слушатель на кнопку Login (срабатывает и по Enter в инпуте)
 authForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     authMessage.textContent = 'Logging in...';
@@ -156,7 +236,6 @@ authForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Слушатель на кнопку Register
 btnRegister.addEventListener('click', async () => {
     if (!usernameInput.value || passwordInput.value.length < 6) {
         authMessage.style.color = '#ff6b6b';
@@ -178,95 +257,61 @@ btnRegister.addEventListener('click', async () => {
     }
 });
 
-// Запускаем проверку при загрузке страницы
-initApp();
 
 // =========================================
-// STATE MANAGEMENT & RENDER
+// 4. RENDER ENGINE
 // =========================================
-
-// Default state for new users
-const defaultState = {
-    workspaces: [
-        {
-            id: "ws-1",
-            title: "Base / Life",
-            items: [
-                {
-                    id: "item-wp",
-                    type: "icon",
-                    title: "Wikipedia",
-                    url: "https://wikipedia.org",
-                    icon: "https://icon.horse/icon/wikipedia.org"
-                },
-                {
-                    id: "item-ff",
-                    type: "single",
-                    title: "Firefox",
-                    url: "https://firefox.com",
-                    icon: "https://icon.horse/icon/firefox.com"
-                },
-                {
-                    id: "group-1", type: "group", title: "Google Apps",
-                    links: [
-                        { id: "sub-1", title: "Gmail", url: "https://mail.google.com", icon: "https://icon.horse/icon/mail.google.com" },
-                        { id: "sub-2", title: "Calendar", url: "https://calendar.google.com", icon: "https://icon.horse/icon/calendar.google.com" }
-                    ]
-                }
-            ]
-        },
-        {
-            id: "ws-2",
-            title: "Dev / Projects",
-            items: [
-                { id: "item-github", type: "single", title: "GitHub", url: "https://github.com", icon: "https://icon.horse/icon/github.com" }
-            ]
-        }
-    ]
-};
-
 function buildWorkspaces(state) {
-    const slider = document.getElementById('slider');
-    slider.innerHTML = ''; // Clear current content
+    slider.innerHTML = '';
+    if (!state || !state.workspaces) return;
 
-    // Fallback to default state if DB is completely empty
-    const workspacesData = (state && state.workspaces && state.workspaces.length > 0)
-        ? state.workspaces
-        : defaultState.workspaces;
+    totalSlides = state.workspaces.length;
+    slider.style.width = `${totalSlides * 100}vw`;
 
-    workspacesData.forEach((ws, index) => {
-        // Create Section
+    if (document.querySelectorAll('.bg-layer').length !== totalSlides) {
+        fetchAnimeBackgrounds(totalSlides);
+    }
+
+    state.workspaces.forEach((ws, index) => {
         const section = document.createElement('section');
         section.className = 'workspace';
         section.dataset.id = ws.id;
 
-        // Title
-        const title = document.createElement('div');
-        title.className = 'workspace-title';
-        title.textContent = ws.title;
-        section.appendChild(title);
+        const titleWrapper = document.createElement('div');
+        titleWrapper.className = 'workspace-title-wrapper';
+        titleWrapper.innerHTML = `
+            <button class="ws-move-btn" onclick="moveWorkspace('${ws.id}', -1)" ${index === 0 ? 'disabled' : ''} title="Move Left">◀</button>
+            <span class="workspace-title" onclick="if(editMode) openWsModal('${ws.id}')" title="Click to edit">${ws.title}</span>
+            <button class="ws-move-btn" onclick="moveWorkspace('${ws.id}', 1)" ${index === state.workspaces.length - 1 ? 'disabled' : ''} title="Move Right">▶</button>
+        `;
+        section.appendChild(titleWrapper);
 
-        // Grid
         const grid = document.createElement('div');
         grid.className = 'layout-grid';
         grid.id = `grid-${index + 1}`;
 
-        // Populate Items
         ws.items.forEach(item => {
+            const controlsHTML = `
+                <div class="card-controls">
+                    <button type="button" class="control-btn edit" onclick="openItemModal(event, '${ws.id}', '${item.id}')" title="Edit">✎</button>
+                    <button type="button" class="control-btn delete" onclick="deleteItem(event, '${ws.id}', '${item.id}')" title="Delete">✖</button>
+                </div>
+            `;
+
             if (item.type === 'icon') {
-                // Только иконка (как Wikipedia в примере)
                 grid.innerHTML += `
-            <a href="${item.url}" class="draggable-item card-icon" title="${item.title}" data-id="${item.id}">
-                <img src="${item.icon}" alt="${item.title}">
-            </a>
-        `;
+                    <a href="${item.url}" class="draggable-item card-icon" title="${item.title}" data-id="${item.id}">
+                        ${controlsHTML}
+                        <img src="${item.icon}" alt="${item.title}">
+                    </a>
+                `;
             } else if (item.type === 'single') {
-                // Иконка + Текст (как Firefox в примере)
                 grid.innerHTML += `
-            <a href="${item.url}" class="draggable-item card-single" title="${item.title}" data-id="${item.id}">
-                <img src="${item.icon}" alt="${item.title}"> ${item.title}
-            </a>
-        `;
+                    <a href="${item.url}" class="draggable-item card-single" title="${item.title}" data-id="${item.id}">
+                        ${controlsHTML}
+                        <img src="${item.icon}" alt="${item.title}"> ${item.title}
+                    </a>
+                `;
             } else if (item.type === 'group') {
                 const subLinksHTML = item.links.map(sub => `
                     <a href="${sub.url}" class="sub-link" data-id="${sub.id}">
@@ -278,6 +323,7 @@ function buildWorkspaces(state) {
 
                 grid.innerHTML += `
                     <div class="draggable-item card-group" data-id="${item.id}">
+                        ${controlsHTML}
                         <div class="group-header" onclick="toggleGroup(this)">
                             <div class="group-title">${item.title}</div>
                             <button class="btn-open-all" title="Open All" onclick="openAll(event, ${urlsArrayStr})">
@@ -296,25 +342,36 @@ function buildWorkspaces(state) {
             }
         });
 
+        const addBtn = document.createElement('div');
+        addBtn.className = 'card-add';
+        addBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        `;
+
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!editMode) return;
+            openItemModal(e, ws.id, null);
+        });
+
+        grid.appendChild(addBtn);
         section.appendChild(grid);
         slider.appendChild(section);
     });
 
-    // Re-bind drag events to the newly created DOM elements
     bindDragEvents();
-
-    // Update global variables for scrolling logic
-    totalSlides = workspacesData.length;
+    totalSlides = state.workspaces.length;
 }
 
-// Глобальный массив для хранения вычисленных цветов (по умолчанию синий, голубой, розовый)
-let dynamicAccents = ['168, 199, 250', '100, 180, 255', '255, 120, 180'];
 
-// --- ВЫЧИСЛЕНИЕ СРЕДНЕГО ЦВЕТА (Canvas 1x1 Hack) ---
+// =========================================
+// 5. BACKGROUNDS & THEMES
+// =========================================
 function getAverageRGB(src) {
     return new Promise((resolve) => {
         const img = new Image();
-        // crossOrigin больше не нужен для локальных файлов через Live Server
         img.src = src;
 
         img.onload = () => {
@@ -334,55 +391,208 @@ function getAverageRGB(src) {
     });
 }
 
-// --- ФЕТЧИНГ АНИМЕ ФОНОВ ---
-function fetchAnimeBackgrounds() {
-    const bgElements = [
-        document.getElementById('bg-1'),
-        document.getElementById('bg-2'),
-        document.getElementById('bg-3')
-    ];
-
-    const myWallpapers = [
-        "/wallpapers/wallhaven-o37d1m.png",
-        "/wallpapers/wallhaven-rrxz57.jpg",
-        "/wallpapers/wallhaven-rd6rdm.png",
-        "/wallpapers/wallhaven-y8kjek.jpg",
-        "/wallpapers/wallhaven-zy7gew.png",
-        "/wallpapers/wallhaven-z8987o.jpg",
-        "/wallpapers/wallhaven-85kd91.jpg",
-        "/wallpapers/wallhaven-kxx38q.png",
-        "/wallpapers/wallhaven-72x61v.jpg",
-        "/wallpapers/wallhaven-og5d8m.png",
-        "/wallpapers/wallhaven-pkdol3.jpg",
-        "/wallpapers/wallhaven-3z7y83.jpg",
-    ];
+function fetchAnimeBackgrounds(count = 1) {
+    document.querySelectorAll('.bg-layer').forEach(b => b.remove());
 
     const pool = [...myWallpapers];
     const selected = [];
+    const fragment = document.createDocumentFragment();
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < count; i++) {
+        if (pool.length === 0) pool.push(...myWallpapers);
         const randomIndex = Math.floor(Math.random() * pool.length);
         selected.push(pool.splice(randomIndex, 1)[0]);
+
+        const layer = document.createElement('div');
+        layer.className = i === currentSlide ? 'bg-layer active' : 'bg-layer';
+        layer.id = `bg-${i + 1}`;
+        layer.style.backgroundImage = `url('${selected[i]}')`;
+
+        fragment.appendChild(layer);
     }
 
-    bgElements[0].style.backgroundImage = `url('${selected[0]}')`;
-    bgElements[1].style.backgroundImage = `url('${selected[1]}')`;
-    bgElements[2].style.backgroundImage = `url('${selected[2]}')`;
+    document.body.prepend(fragment);
 
-    Promise.all([
-        getAverageRGB(selected[0]),
-        getAverageRGB(selected[1]),
-        getAverageRGB(selected[2])
-    ]).then(colors => {
+    Promise.all(selected.map(src => getAverageRGB(src))).then(colors => {
         dynamicAccents = colors;
-        document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide]);
+        document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide] || '168, 199, 250');
     });
 }
 
-// Вызываем при загрузке
-fetchAnimeBackgrounds();
+// =========================================
+// 6. SLIDER & SCROLL LOGIC
+// =========================================
+window.addEventListener('wheel', (e) => {
+    if (isScrolling ||
+        document.getElementById('searchOverlay').classList.contains('active') ||
+        document.querySelector('.modal-overlay.active')
+    ) return;
 
-// --- Дропдауны ---
+    document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
+    exitEditMode();
+
+    if (e.deltaY > 0) {
+        if (currentSlide < totalSlides - 1) { currentSlide++; moveSlider(); }
+        else triggerBounce(1);
+    } else if (e.deltaY < 0) {
+        if (currentSlide > 0) { currentSlide--; moveSlider(); }
+        else triggerBounce(-1);
+    }
+});
+
+function moveSlider() {
+    isScrolling = true;
+    slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+
+    document.querySelectorAll('.bg-layer').forEach((bg, index) => {
+        bg.classList.toggle('active', index === currentSlide);
+    });
+
+    document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide] || '168, 199, 250');
+
+    setTimeout(() => { isScrolling = false; }, 800);
+}
+
+function triggerBounce(direction) {
+    isScrolling = true;
+    const bounceOffset = direction * 4;
+    slider.style.transform = `translateX(calc(-${currentSlide * 100}vw - ${bounceOffset}vw))`;
+    setTimeout(() => {
+        slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+        setTimeout(() => { isScrolling = false; }, 500);
+    }, 300);
+}
+
+
+// =========================================
+// 7. DRAG AND DROP & EDIT MODE
+// =========================================
+const bindDragEvents = () => {
+    const items = document.querySelectorAll('.draggable-item');
+    items.forEach(item => {
+        item.addEventListener('mousedown', startPress);
+        item.addEventListener('mouseup', cancelPress);
+        item.addEventListener('mouseleave', cancelPress);
+
+        item.addEventListener('click', (e) => { if (editMode) e.preventDefault(); });
+
+        item.addEventListener('dragstart', (e) => {
+            if (editMode) {
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', 'drag');
+            } else {
+                e.preventDefault();
+            }
+        });
+
+        item.addEventListener('dragend', async () => {
+            item.classList.remove('dragging');
+            if (!editMode) return;
+
+            const grid = item.closest('.layout-grid');
+            const section = item.closest('.workspace');
+            if (!grid || !section) return;
+
+            const wsId = section.dataset.id;
+            const ws = currentState.workspaces.find(w => w.id === wsId);
+
+            const domItems = [...grid.querySelectorAll('.draggable-item[data-id]')];
+            const newItemsOrder = [];
+
+            domItems.forEach(domItem => {
+                const originalItem = ws.items.find(i => i.id === domItem.dataset.id);
+                if (originalItem) newItemsOrder.push(originalItem);
+            });
+
+            ws.items = newItemsOrder;
+            await DashboardData.save(currentState);
+        });
+    });
+};
+
+function startPress(e) {
+    if (editMode) return;
+    pressTimer = setTimeout(() => {
+        editMode = true;
+        document.body.classList.add('edit-mode');
+        document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
+        document.querySelectorAll('.draggable-item').forEach(i => i.setAttribute('draggable', 'true'));
+    }, 600);
+}
+
+function cancelPress() { clearTimeout(pressTimer); }
+
+function exitEditMode() {
+    if (editMode) {
+        editMode = false;
+        document.body.classList.remove('edit-mode');
+        document.querySelectorAll('.draggable-item').forEach(i => {
+            i.removeAttribute('draggable');
+            i.classList.remove('dragging');
+        });
+    }
+}
+
+document.querySelectorAll('.layout-grid').forEach(grid => {
+    grid.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (!editMode) return;
+        const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
+        const draggable = document.querySelector('.dragging');
+        if (draggable && afterElement == null) {
+            grid.appendChild(draggable);
+        } else if (draggable) {
+            grid.insertBefore(draggable, afterElement);
+        }
+    });
+});
+
+function getDragAfterElement(container, x, y) {
+    const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = x - (box.left + box.width / 2);
+        const verticalOffset = y - (box.top + box.height / 2);
+        if (verticalOffset < 0 && verticalOffset > closest.offset) {
+            return { offset: verticalOffset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+document.addEventListener('click', (e) => {
+    if (editMode &&
+        !e.target.closest('.draggable-item') &&
+        !e.target.closest('.card-add') &&
+        !e.target.closest('.fab-edit') &&
+        !e.target.closest('.modal-overlay') &&
+        !e.target.closest('.ws-edit-btn') &&
+        !e.target.closest('.fab-add-ws')
+    ) {
+        exitEditMode();
+    }
+});
+
+btnEditMode.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.body.classList.toggle('edit-mode');
+    editMode = document.body.classList.contains('edit-mode');
+
+    document.querySelectorAll('.draggable-item').forEach(i => {
+        if (editMode) {
+            i.setAttribute('draggable', 'true');
+        } else {
+            i.removeAttribute('draggable');
+        }
+    });
+
+    console.log("Edit mode:", editMode);
+});
+
+// Dropdowns functionality
 function toggleGroup(headerElement) {
     if (document.body.classList.contains('edit-mode')) return;
     const group = headerElement.parentElement;
@@ -406,134 +616,10 @@ function openAll(event, urls) {
     });
 }
 
-// Выход из режима D&D
-function exitEditMode() {
-    if (editMode) {
-        editMode = false;
-        document.body.classList.remove('edit-mode');
-        document.querySelectorAll('.draggable-item').forEach(i => {
-            i.removeAttribute('draggable');
-            i.classList.remove('dragging');
-        });
-    }
-}
 
-// --- ТЕМЫ И СКРОЛЛ ---
-const themeAccents = ['168, 199, 250', '100, 180, 255', '255, 120, 180'];
-const slider = document.getElementById('slider');
-const backgrounds = document.querySelectorAll('.bg-layer');
-let currentSlide = 0;
-const totalSlides = 3;
-let isScrolling = false;
-
-window.addEventListener('wheel', (e) => {
-    if (isScrolling || document.getElementById('searchOverlay').classList.contains('active')) return;
-
-    document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
-    exitEditMode();
-
-    if (e.deltaY > 0) {
-        if (currentSlide < totalSlides - 1) { currentSlide++; moveSlider(); }
-        else triggerBounce(1);
-    } else if (e.deltaY < 0) {
-        if (currentSlide > 0) { currentSlide--; moveSlider(); }
-        else triggerBounce(-1);
-    }
-});
-
-function moveSlider() {
-    isScrolling = true;
-    slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
-    backgrounds.forEach((bg, index) => { bg.classList.toggle('active', index === currentSlide); });
-
-    // Убираем классы тем и просто меняем CSS переменную динамически
-    document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide]);
-
-    setTimeout(() => { isScrolling = false; }, 800);
-}
-
-function triggerBounce(direction) {
-    isScrolling = true;
-    const bounceOffset = direction * 4;
-    slider.style.transform = `translateX(calc(-${currentSlide * 100}vw - ${bounceOffset}vw))`;
-    setTimeout(() => {
-        slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
-        setTimeout(() => { isScrolling = false; }, 500);
-    }, 300);
-}
-
-// --- DRAG AND DROP ---
-let editMode = false;
-let pressTimer;
-
-const bindDragEvents = () => {
-    const items = document.querySelectorAll('.draggable-item');
-    items.forEach(item => {
-        item.addEventListener('mousedown', startPress);
-        item.addEventListener('mouseup', cancelPress);
-        item.addEventListener('mouseleave', cancelPress);
-
-        item.addEventListener('click', (e) => { if (editMode) e.preventDefault(); });
-
-        item.addEventListener('dragstart', (e) => {
-            if (editMode) {
-                item.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', '');
-            } else {
-                e.preventDefault();
-            }
-        });
-        item.addEventListener('dragend', () => item.classList.remove('dragging'));
-    });
-};
-
-function startPress(e) {
-    if (editMode) return;
-    pressTimer = setTimeout(() => {
-        editMode = true;
-        document.body.classList.add('edit-mode');
-        document.querySelectorAll('.card-group').forEach(g => g.classList.remove('active'));
-        document.querySelectorAll('.draggable-item').forEach(i => i.setAttribute('draggable', 'true'));
-    }, 600);
-}
-
-function cancelPress() { clearTimeout(pressTimer); }
-
-document.querySelectorAll('.layout-grid').forEach(grid => {
-    grid.addEventListener('dragover', e => {
-        e.preventDefault();
-        if (!editMode) return;
-        const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
-        const draggable = document.querySelector('.dragging');
-        if (draggable && afterElement == null) {
-            grid.appendChild(draggable);
-        } else if (draggable) {
-            grid.insertBefore(draggable, afterElement);
-        }
-    });
-});
-
-function getDragAfterElement(container, x, y) {
-    const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')];
-    return draggableElements.find(child => {
-        const box = child.getBoundingClientRect();
-        return y <= box.bottom && x <= box.left + box.width / 2;
-    });
-}
-
-document.addEventListener('click', (e) => {
-    if (editMode && !e.target.closest('.draggable-item')) {
-        exitEditMode();
-    }
-});
-
-bindDragEvents();
-
-// --- ПОИСК ---
-const searchTrigger = document.getElementById('searchTrigger');
-const searchOverlay = document.getElementById('searchOverlay');
-const searchInput = document.getElementById('searchInput');
-
+// =========================================
+// 8. SEARCH LOGIC
+// =========================================
 function toggleSearch(show) {
     searchOverlay.classList.toggle('active', show);
     if (show) setTimeout(() => searchInput.focus(), 50);
@@ -546,6 +632,11 @@ searchOverlay.addEventListener('click', (e) => { if (e.target === searchOverlay)
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { toggleSearch(false); return; }
 
+    const activeElemTag = document.activeElement.tagName;
+    if (activeElemTag === 'INPUT' || activeElemTag === 'TEXTAREA' || activeElemTag === 'SELECT') return;
+    if (document.querySelector('.auth-overlay.active')) return;
+    if (document.querySelector('.modal-overlay.active')) return;
+
     if (!searchOverlay.classList.contains('active') && !editMode && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         toggleSearch(true);
         searchInput.value = e.key;
@@ -553,12 +644,11 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-document.getElementById('searchForm').addEventListener('submit', (e) => {
+searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const q = searchInput.value.trim();
     if (!q) return;
 
-    // Если запрос начинается на 'c ' -> ищем в ChatGPT Search
     if (q.toLowerCase().startsWith('c ')) {
         window.location.href = `https://chatgpt.com/?q=${encodeURIComponent(q.substring(2))}`;
     } else {
@@ -566,7 +656,10 @@ document.getElementById('searchForm').addEventListener('submit', (e) => {
     }
 });
 
-// --- ВРЕМЯ И Ф1 И ПОГОДА ---
+
+// =========================================
+// 9. WIDGETS (CLOCK, F1, WEATHER)
+// =========================================
 setInterval(() => {
     const now = new Date();
     document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -599,7 +692,6 @@ fetch('https://api.jolpi.ca/ergast/f1/current/next.json')
         document.getElementById('f1-countdown').textContent = "--";
     });
 
-// --- ПОГОДА ---
 async function fetchWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=46.4825&longitude=30.7233&current_weather=true');
@@ -624,3 +716,247 @@ async function fetchWeather() {
 }
 fetchWeather();
 setInterval(fetchWeather, 1000 * 60 * 30);
+
+
+// =========================================
+// 10. CRUD & MODALS LOGIC
+// =========================================
+
+// --- Item Modal Logic ---
+modalItemType.addEventListener('change', (e) => {
+    if (e.target.value === 'group') {
+        modalUrlGroup.style.display = 'none';
+        modalItemUrl.removeAttribute('required');
+        modalLinksGroup.style.display = 'block';
+    } else {
+        modalUrlGroup.style.display = 'block';
+        modalItemUrl.setAttribute('required', 'true');
+        modalLinksGroup.style.display = 'none';
+    }
+});
+
+btnAddSubLink.addEventListener('click', () => {
+    addSubLinkDOM('', '');
+});
+
+function addSubLinkDOM(title, url) {
+    const div = document.createElement('div');
+    div.className = 'sub-link-row';
+    div.innerHTML = `
+        <input type="text" placeholder="Title" value="${title}" class="sub-link-title" required>
+        <input type="url" placeholder="URL" value="${url}" class="sub-link-url" required>
+        <button type="button" class="btn-danger btn-small" onclick="this.parentElement.remove()">✖</button>
+    `;
+    modalSubLinks.appendChild(div);
+}
+
+function openItemModal(e, wsId, itemId = null) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    itemForm.reset();
+    modalSubLinks.innerHTML = '';
+    modalWsId.value = wsId;
+    modalItemId.value = itemId || '';
+
+    if (itemId) {
+        modalTitle.textContent = 'Edit Item';
+        const ws = currentState.workspaces.find(w => w.id === wsId);
+        const item = ws.items.find(i => i.id === itemId);
+
+        modalItemType.value = item.type;
+        modalItemTitle.value = item.title;
+
+        if (item.type === 'group') {
+            item.links.forEach(link => addSubLinkDOM(link.title, link.url));
+        } else {
+            modalItemUrl.value = item.url;
+        }
+    } else {
+        modalTitle.textContent = 'Add New Item';
+        modalItemType.value = 'single';
+    }
+
+    modalItemType.dispatchEvent(new Event('change'));
+    itemModal.classList.add('active');
+}
+
+btnCancelModal.addEventListener('click', () => {
+    itemModal.classList.remove('active');
+});
+
+itemForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const wsId = modalWsId.value;
+    const itemId = modalItemId.value;
+    const ws = currentState.workspaces.find(w => w.id === wsId);
+    if (!ws) return;
+
+    const type = modalItemType.value;
+    const title = modalItemTitle.value;
+
+    let newItem = { type, title };
+
+    if (type === 'group') {
+        const linkRows = modalSubLinks.querySelectorAll('.sub-link-row');
+        newItem.links = [];
+        linkRows.forEach((row, i) => {
+            const t = row.querySelector('.sub-link-title').value;
+            const u = row.querySelector('.sub-link-url').value;
+            const domain = new URL(u).hostname;
+            newItem.links.push({
+                id: `sub-${Date.now()}-${i}`,
+                title: t,
+                url: u,
+                icon: `https://icon.horse/icon/${domain}`
+            });
+        });
+    } else {
+        const url = modalItemUrl.value;
+        const domain = new URL(url).hostname;
+        newItem.url = url;
+        newItem.icon = `https://icon.horse/icon/${domain}`;
+    }
+
+    if (itemId) {
+        const index = ws.items.findIndex(i => i.id === itemId);
+        if (index > -1) {
+            newItem.id = itemId;
+            ws.items[index] = newItem;
+        }
+    } else {
+        newItem.id = 'item-' + Date.now();
+        ws.items.push(newItem);
+    }
+
+    console.log("💾 Отправляем данные в БД:", currentState);
+    const result = await DashboardData.save(currentState);
+
+    if (result && result.status === 'success') {
+        itemModal.classList.remove('active');
+        buildWorkspaces(currentState);
+    } else {
+        alert("Ошибка сохранения в базу!");
+    }
+});
+
+// --- Delete Item Confirm Logic ---
+async function deleteItem(e, wsId, itemId) {
+    e.preventDefault();
+    e.stopPropagation();
+    itemToDelete = { wsId, itemId };
+    deleteConfirmModal.classList.add('active');
+}
+
+btnCancelDelete.addEventListener('click', () => {
+    deleteConfirmModal.classList.remove('active');
+    itemToDelete = null;
+});
+
+btnConfirmDelete.addEventListener('click', async () => {
+    if (!itemToDelete) return;
+    const ws = currentState.workspaces.find(w => w.id === itemToDelete.wsId);
+    if (ws) {
+        ws.items = ws.items.filter(i => i.id !== itemToDelete.itemId);
+        await DashboardData.save(currentState);
+        buildWorkspaces(currentState);
+    }
+    deleteConfirmModal.classList.remove('active');
+    itemToDelete = null;
+});
+
+// --- Workspace CRUD Logic ---
+btnAddWorkspace.addEventListener('click', () => openWsModal(null));
+
+function openWsModal(wsId = null) {
+    wsForm.reset();
+    modalWsIdEdit.value = wsId || '';
+
+    if (wsId) {
+        wsModalTitle.textContent = 'Edit Workspace';
+        const ws = currentState.workspaces.find(w => w.id === wsId);
+        modalWsTitle.value = ws.title;
+        btnDeleteWs.style.display = 'block';
+    } else {
+        wsModalTitle.textContent = 'Add New Workspace';
+        btnDeleteWs.style.display = 'none';
+    }
+    wsModal.classList.add('active');
+}
+
+document.getElementById('btnCancelWs').addEventListener('click', () => wsModal.classList.remove('active'));
+
+wsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const wsId = modalWsIdEdit.value;
+    const title = modalWsTitle.value;
+
+    if (wsId) {
+        const ws = currentState.workspaces.find(w => w.id === wsId);
+        if (ws) ws.title = title;
+    } else {
+        currentState.workspaces.push({
+            id: 'ws-' + Date.now(),
+            title: title,
+            items: []
+        });
+    }
+
+    await DashboardData.save(currentState);
+    wsModal.classList.remove('active');
+    buildWorkspaces(currentState);
+
+    if (!wsId) {
+        currentSlide = currentState.workspaces.length - 1;
+        moveSlider();
+    }
+});
+
+btnDeleteWs.addEventListener('click', async () => {
+    const wsId = modalWsIdEdit.value;
+    if (!wsId) return;
+
+    if (!confirm('Delete this entire workspace and ALL its links?')) return;
+
+    currentState.workspaces = currentState.workspaces.filter(w => w.id !== wsId);
+
+    if (currentState.workspaces.length === 0) {
+        currentState.workspaces.push({ id: 'ws-base', title: 'Base', items: [] });
+    }
+
+    await DashboardData.save(currentState);
+    wsModal.classList.remove('active');
+
+    if (currentSlide >= currentState.workspaces.length) {
+        currentSlide = currentState.workspaces.length - 1;
+    }
+    buildWorkspaces(currentState);
+    moveSlider();
+});
+
+async function moveWorkspace(wsId, direction) {
+    if (!editMode) return;
+
+    const index = currentState.workspaces.findIndex(w => w.id === wsId);
+    if (index < 0) return;
+
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= currentState.workspaces.length) return;
+
+    const temp = currentState.workspaces[index];
+    currentState.workspaces[index] = currentState.workspaces[newIndex];
+    currentState.workspaces[newIndex] = temp;
+
+    await DashboardData.save(currentState);
+
+    currentSlide = newIndex;
+
+    // Перерисовываем интерфейс
+    buildWorkspaces(currentState);
+    moveSlider();
+}
+
+// INITIALIZE APP
+initApp();
+fetchAnimeBackgrounds();

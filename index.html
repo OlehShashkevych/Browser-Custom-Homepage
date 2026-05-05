@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
-<body class="theme-0">
+<body>
     <div class="auth-overlay active" id="authOverlay">
         <div class="auth-card">
             <h2>Workspace</h2>
@@ -25,10 +25,6 @@
             </form>
         </div>
     </div>
-
-    <div class="bg-layer active" id="bg-1"></div>
-    <div class="bg-layer" id="bg-2"></div>
-    <div class="bg-layer" id="bg-3"></div>
 
     <header class="widgets">
         <div class="time-widget">
@@ -58,6 +54,96 @@
             <input type="text" class="search-input" id="searchInput" placeholder="What's on your mind?"
                 autocomplete="off">
         </form>
+    </div>
+
+    <button class="fab-edit" id="btnEditMode" title="Toggle Edit Mode">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+    </button>
+
+    <button class="fab-add-ws" id="btnAddWorkspace" title="Add Workspace">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+    </button>
+
+    <div class="modal-overlay" id="deleteConfirmModal">
+        <div class="modal-card">
+            <h3>Confirm Delete</h3>
+            <p style="margin-bottom: 2rem; color: var(--text-muted);">Are you sure you want to delete this item?</p>
+            <div class="auth-actions">
+                <button type="button" id="btnConfirmDelete" class="btn-danger">Delete</button>
+                <button type="button" id="btnCancelDelete" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="wsModal">
+        <div class="modal-card">
+            <h3 id="wsModalTitle">Manage Workspace</h3>
+            <form id="wsForm">
+                <input type="hidden" id="modalWsIdEdit">
+                <div class="form-group">
+                    <label>Workspace Title</label>
+                    <input type="text" id="modalWsTitle" placeholder="e.g., Work / Dev" required autocomplete="off">
+                </div>
+                <div class="auth-actions">
+                    <button type="submit" id="btnSaveWs">Save</button>
+                    <button type="button" class="btn-secondary" id="btnCancelWs">Cancel</button>
+                </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button type="button" class="btn-danger btn-small" id="btnDeleteWs"
+                        style="width: 100%; display: none;">Delete Entire Workspace</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="itemModal">
+        <div class="modal-card">
+            <h3 id="modalTitle">Add Item</h3>
+            <form id="itemForm">
+                <input type="hidden" id="modalWsId">
+                <input type="hidden" id="modalItemId">
+
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="modalItemType">
+                        <option value="single">Single Link (with text)</option>
+                        <option value="icon">Icon Only</option>
+                        <option value="group">Group (Folder)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="modalItemTitle" placeholder="e.g., YouTube" required autocomplete="off">
+                </div>
+
+                <div class="form-group" id="modalUrlGroup">
+                    <label>URL</label>
+                    <input type="url" id="modalItemUrl" placeholder="https://youtube.com">
+                </div>
+
+                <div class="form-group" id="modalLinksGroup" style="display: none;">
+                    <label>Group Links</label>
+                    <div id="modalSubLinks"></div>
+                    <button type="button" class="btn-secondary btn-small" id="btnAddSubLink" style="margin-top: 10px;">+
+                        Add Sub-link</button>
+                </div>
+
+                <div class="auth-actions">
+                    <button type="submit" id="btnSaveModal">Save</button>
+                    <button type="button" class="btn-secondary" id="btnCancelModal">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="assets/js/script.js"></script>
