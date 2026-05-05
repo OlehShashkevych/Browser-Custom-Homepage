@@ -163,7 +163,8 @@ const Auth = {
         return res;
     },
 
-    logout() {
+    async logout() {
+        await apiRequest('logout');
         localStorage.removeItem('homepage_token');
         location.reload();
     }
@@ -517,11 +518,12 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
-// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ПРИЛИПАНИЕ К ПАЛЬЦУ) ---
+// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ПРИЛИПАНИЕ К ПАЛЬЦУ + GPU УСКОРЕНИЕ) ---
 let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
 let swipeDirectionDetermined = false;
+let cachedViewportWidth = 0; // Кэшируем ширину экрана для Firefox
 
 document.addEventListener('touchstart', e => {
     if (isScrolling ||
@@ -535,6 +537,9 @@ document.addEventListener('touchstart', e => {
     touchStartY = e.touches[0].screenY;
     isSwiping = true;
     swipeDirectionDetermined = false;
+
+    // Запоминаем ширину один раз при касании (спасает FPS в Firefox)
+    cachedViewportWidth = window.innerWidth;
 
     slider.classList.add('swiping');
 }, { passive: true });
@@ -554,7 +559,7 @@ document.addEventListener('touchmove', e => {
             swipeDirectionDetermined = 'vertical';
             isSwiping = false;
             slider.classList.remove('swiping');
-            slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+            slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`; // Используем 3D
             return;
         } else {
             return;
@@ -562,8 +567,9 @@ document.addEventListener('touchmove', e => {
     }
 
     if (swipeDirectionDetermined === 'horizontal') {
-        const baseTranslate = -(currentSlide * window.innerWidth);
-        slider.style.transform = `translateX(calc(${baseTranslate}px - ${diffX}px))`;
+        // Считаем чистые пиксели без calc()
+        const currentTranslate = -(currentSlide * cachedViewportWidth) - diffX;
+        slider.style.transform = `translate3d(${currentTranslate}px, 0, 0)`;
     }
 }, { passive: true });
 
@@ -594,7 +600,8 @@ document.addEventListener('touchend', e => {
 
 function moveSlider() {
     isScrolling = true;
-    slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+    // translate3d заставляет телефон рендерить слой на видеокарте
+    slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`;
 
     document.querySelectorAll('.bg-layer').forEach((bg, index) => {
         bg.classList.toggle('active', index === currentSlide);
@@ -602,19 +609,20 @@ function moveSlider() {
 
     document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide] || '168, 199, 250');
 
-    setTimeout(() => { isScrolling = false; }, 800);
+    // Разблокируем скролл быстрее (под новую CSS-анимацию 0.5s)
+    setTimeout(() => { isScrolling = false; }, 500);
 }
 
 function triggerBounce(direction) {
     isScrolling = true;
     const bounceOffset = direction * 4;
-    slider.style.transform = `translateX(calc(-${currentSlide * 100}vw - ${bounceOffset}vw))`;
-    setTimeout(() => {
-        slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
-        setTimeout(() => { isScrolling = false; }, 500);
-    }, 300);
-}
+    slider.style.transform = `translate3d(calc(-${currentSlide * 100}vw - ${bounceOffset}vw), 0, 0)`;
 
+    setTimeout(() => {
+        slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`;
+        setTimeout(() => { isScrolling = false; }, 400); // Разблокируем быстрее
+    }, 200); // Отскок более резкий и приятный
+}
 
 // =========================================
 // 7. DRAG AND DROP & EDIT MODE
@@ -1249,6 +1257,36 @@ if (document.getElementById('btnLogout')) {
         Auth.logout();
     });
 }
+
+// =========================================
+// АВТО-СИНХРОНИЗАЦИЯ МЕЖДУ УСТРОЙСТВАМИ
+// =========================================
+document.addEventListener('visibilitychange', async () => {
+    // Срабатывает, когда ты возвращаешься на вкладку (разблокировал телефон / перешел с другой вкладки ПК)
+    if (document.visibilityState === 'visible' && localStorage.getItem('homepage_token')) {
+        // Мы не синхронизируем, если ты прямо сейчас редактируешь закладки (чтобы не сбить твои действия)
+        if (editMode || document.querySelector('.modal-overlay.active')) return;
+
+        const freshData = await DashboardData.load();
+        if (freshData) {
+            // Если данные на сервере отличаются от тех, что у нас на экране
+            if (JSON.stringify(freshData) !== JSON.stringify(currentState)) {
+                console.log('🔄 Data changed on another device! Syncing...');
+                currentState = freshData;
+
+                // Перерисовываем интерфейс с новыми данными
+                buildWorkspaces(currentState);
+                applyWidgetSettings();
+
+                // Если мы стояли на экране, которого больше нет — возвращаемся на первый
+                if (currentSlide >= currentState.workspaces.length) {
+                    currentSlide = currentState.workspaces.length > 0 ? currentState.workspaces.length - 1 : 0;
+                    moveSlider();
+                }
+            }
+        }
+    }
+});
 
 // INITIALIZE APP
 initApp();
