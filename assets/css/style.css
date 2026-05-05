@@ -992,8 +992,8 @@ body.edit-mode .card-add {
     .workspace {
         /* Используем ту же переменную, но сбрасываем центрирование */
         padding-top: calc(var(--header-height, 150px) + 1.5rem);
-        padding-bottom: 120px;
-        justify-content: flex-start;
+        padding-bottom: calc(3rem + 50px);
+        /* justify-content: flex-start; */
         overflow-y: auto;
         -ms-overflow-style: none;
         scrollbar-width: none;
