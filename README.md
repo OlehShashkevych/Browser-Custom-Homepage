@@ -63,12 +63,12 @@ Perfect if you want to sync your configuration and links across multiple devices
    mv inc/config.example.php inc/config.php
    ```
 4. Open `inc/config.php` and configure your database credentials.
-5. Access the dashboard through your web server's domain or local IP. The REST API will automatically handle authentication and state saving.
+5. Access the dashboard through your web server's domain or local IP. The custom JSON API will automatically handle authentication and state saving.
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** HTML5, CSS3 (SCSS Compiled), Vanilla JavaScript
-* **Backend (Optional):** PHP (REST API for auth & state saving)
+* **Frontend:** HTML5, CSS3, Vanilla JavaScript
+* **Backend (Optional):** PHP (Custom JSON API for auth & state saving)
 
 ## 👨‍💻 Author
 
