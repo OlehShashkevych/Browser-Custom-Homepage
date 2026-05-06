@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/images/readme/banner.png" alt="Project Banner" width="100%">
 
-  # 🌟 Custom Browser Start Page & Dashboard
+  # HomeSpace - Custom Browser Start Page & Dashboard
 
   [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
   [![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)]()
@@ -57,13 +57,16 @@ Perfect if you want a fast, privacy-first, local-only dashboard.
 Perfect if you want to sync your configuration and links across multiple devices.
 
 1. Clone the repository to your web server (Apache, Nginx, etc.) that supports PHP.
-2. Navigate to the `inc/` directory.
-3. Rename the configuration file:
+2. **Database Setup:**
+   * Create a new MySQL/MariaDB database.
+   * Import the provided `inc/database.sql` file into your database to create the required tables.
+3. Navigate to the `inc/` directory.
+4. Rename the configuration file:
    ```bash
    mv inc/config.example.php inc/config.php
    ```
-4. Open `inc/config.php` and configure your database credentials.
-5. Access the dashboard through your web server's domain or local IP. The custom JSON API will automatically handle authentication and state saving.
+5. Open `inc/config.php` and configure your database credentials.
+6. Access the dashboard through your web server's domain or local IP. The custom JSON API will automatically handle authentication and state saving.
 
 ## 🛠️ Tech Stack
 
