@@ -73,6 +73,71 @@ function escapeHTML(str) {
     }[tag] || tag));
 }
 
+// =========================================
+// CUSTOM DIALOG (REPLACES ALERT & CONFIRM)
+// =========================================
+const CustomDialog = {
+    show: function (title, message, isConfirm = false) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay active';
+            overlay.style.zIndex = '9999';
+
+            const card = document.createElement('div');
+            card.className = 'modal-card';
+            card.style.textAlign = 'center';
+            card.style.maxWidth = '350px';
+
+            const titleEl = document.createElement('h3');
+            titleEl.textContent = title;
+            titleEl.style.marginTop = '0';
+            titleEl.style.marginBottom = '1rem';
+
+            const messageEl = document.createElement('p');
+            messageEl.innerHTML = message.replace(/\n/g, '<br>');
+            messageEl.style.color = 'var(--text-muted)';
+            messageEl.style.marginBottom = '2rem';
+            messageEl.style.fontSize = '0.95rem';
+
+            const actions = document.createElement('div');
+            actions.className = 'auth-actions';
+            actions.style.justifyContent = 'center';
+            actions.style.marginTop = '0';
+
+            if (isConfirm) {
+                const btnYes = document.createElement('button');
+                btnYes.className = 'btn-danger';
+                btnYes.textContent = 'Confirm';
+                btnYes.onclick = () => { overlay.remove(); resolve(true); };
+
+                const btnNo = document.createElement('button');
+                btnNo.className = 'btn-secondary';
+                btnNo.textContent = 'Cancel';
+                btnNo.onclick = () => { overlay.remove(); resolve(false); };
+
+                actions.appendChild(btnYes);
+                actions.appendChild(btnNo);
+            } else {
+                const btnOk = document.createElement('button');
+                btnOk.textContent = 'OK';
+                btnOk.onclick = () => { overlay.remove(); resolve(true); };
+                actions.appendChild(btnOk);
+            }
+
+            card.appendChild(titleEl);
+            card.appendChild(messageEl);
+            card.appendChild(actions);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+
+
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+            });
+        });
+    }
+};
+
 // DOM Elements - Auth
 const authOverlay = document.getElementById('authOverlay');
 const authForm = document.getElementById('authForm');
@@ -261,12 +326,10 @@ async function loadAndRenderWorkspace() {
         currentState = { settings: { isLocalOnly: true }, workspaces: [], wiped: true };
         authOverlay.classList.remove('active');
 
-        if (!localStorage.getItem('offline_state')) {
-            setTimeout(() => {
-                alert("☁️ Cloud data is empty (Local Only mode was used).\n\nPlease import your JSON backup to restore the dashboard.");
-                document.getElementById('settingsModal').classList.add('active');
-            }, 800);
-        }
+        setTimeout(async () => {
+            await CustomDialog.show("Data Wiped", "☁️ Cloud data is empty (Local Only mode was used).\n\nPlease import your JSON backup to restore the dashboard.");
+            document.getElementById('settingsModal').classList.add('active');
+        }, 800);
     } else if (data && data.workspaces && data.workspaces.length > 0) {
         currentState = data;
         authOverlay.classList.remove('active');
@@ -1059,7 +1122,7 @@ itemForm.addEventListener('submit', async (e) => {
         itemModal.classList.remove('active');
         buildWorkspaces(currentState);
     } else {
-        alert("Error saving to database!");
+        CustomDialog.show("Error", "Error saving to database!");
     }
 });
 
@@ -1148,7 +1211,8 @@ btnDeleteWs.addEventListener('click', async () => {
     const wsId = modalWsIdEdit.value;
     if (!wsId) return;
 
-    if (!confirm('Delete this entire workspace and ALL its links?')) return;
+    const isConfirmed = await CustomDialog.show("Delete Workspace", "Are you sure you want to delete this entire workspace and ALL its links?", true);
+    if (!isConfirmed) return;
 
     currentState.workspaces = currentState.workspaces.filter(w => w.id !== wsId);
 
@@ -1197,7 +1261,7 @@ document.getElementById('inputUploadBg').addEventListener('change', (e) => {
     if (!file) return;
 
     if (file.size > 2.5 * 1024 * 1024) {
-        alert("File is too large! Please choose an image under 2.5 MB.");
+        CustomDialog.show("File too large", "File is too large! Please choose an image under 2.5 MB.");
         return;
     }
 
@@ -1307,20 +1371,14 @@ if (document.getElementById('inputImportJson')) {
                     if (importedState.wiped) delete importedState.wiped;
                     if (!importedState.settings) importedState.settings = {};
 
-                    importedState.settings.showClock = document.getElementById('settShowClock').checked;
-                    importedState.settings.showWeather = document.getElementById('settShowWeather').checked;
-                    importedState.settings.showF1 = document.getElementById('settShowF1').checked;
-                    importedState.settings.showSearch = document.getElementById('settShowSearch').checked;
-                    importedState.settings.searchEngine = document.getElementById('settSearchEngine').value;
-
-                    if (document.getElementById('settLocalOnly')) {
-                        importedState.settings.isLocalOnly = document.getElementById('settLocalOnly').checked;
-                    }
+                    // Просто берем весь загруженный объект как есть и сохраняем
                     currentState = importedState;
                     await DashboardData.save(currentState);
                     location.reload();
                 }
-            } catch (err) { alert("Invalid JSON file. Please upload a valid backup."); }
+            } catch (err) {
+                CustomDialog.show("Import Error", "Invalid JSON file. Please upload a valid backup.");
+            }
         };
         reader.readAsText(file);
     });
