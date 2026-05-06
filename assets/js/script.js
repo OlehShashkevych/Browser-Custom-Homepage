@@ -33,6 +33,22 @@ const defaultState = {
     },
     workspaces: [
         {
+            id: "ws-tutorial",
+            title: "👋 Welcome! (Tutorial)",
+            items: [
+                { id: "item-tut-1", type: "single", title: "Long-press me (or click ✎) to edit", url: "#", icon: "https://icon.horse/icon/wikipedia.org" },
+                { id: "item-tut-2", type: "single", title: "Drag & Drop to reorder items", url: "#", icon: "https://icon.horse/icon/trello.com" },
+                { id: "item-tut-3", type: "single", title: "Click ⚙️ to enable 'Local Only' mode", url: "#", icon: "https://icon.horse/icon/duckduckgo.com" },
+                {
+                    id: "group-tut", type: "group", title: "Click to open a folder",
+                    links: [
+                        { id: "sub-t-1", title: "You can group links like this", url: "#", icon: "https://icon.horse/icon/github.com" },
+                        { id: "sub-t-2", title: "Delete this workspace when ready!", url: "#", icon: "https://icon.horse/icon/reddit.com" }
+                    ]
+                }
+            ]
+        },
+        {
             id: "ws-1",
             title: "Daily",
             items: [
@@ -51,12 +67,13 @@ const defaultState = {
         },
         {
             id: "ws-2",
-            title: "Creator",
+            title: "☕ About Creator",
             items: [
+                { id: "item-pr", type: "single", title: "Privacy Policy", url: "https://home.shashkevych.com/privacy.html", icon: "https://home.shashkevych.com/assets/icon-192.png" },
+                { id: "item-gh", type: "single", title: "Source Code (GitHub)", url: "https://github.com/OlehShashkevych/Browser-Custom-Homepage", icon: "https://icon.horse/icon/github.com" },
                 { id: "item-os", type: "single", title: "Shashkevych Studio", url: "https://shashkevych.com", icon: "https://shashkevych.com/wp-content/uploads/2025/07/Screenshot_20250731_122011.png" },
                 { id: "item-al", type: "single", title: "Albina (Photo & Video)", url: "https://albina.shashkevych.com", icon: "https://albina.shashkevych.com/wp-content/uploads/2026/01/cropped-logo-192x192.webp" },
-                { id: "item-kofi", type: "single", title: "Ko-fi", url: "https://ko-fi.com/iamoleh", icon: "https://icon.horse/icon/ko-fi.com" },
-                { id: "item-pr", type: "single", title: "Privacy Policy", url: "https://home.shashkevych.com/privacy.html", icon: "https://home.shashkevych.com/assets/icon-192.png" }
+                { id: "item-kofi", type: "single", title: "Buy me a Coffee", url: "https://ko-fi.com/iamoleh", icon: "https://icon.horse/icon/ko-fi.com" }
             ]
         }
     ]
@@ -1371,7 +1388,6 @@ if (document.getElementById('inputImportJson')) {
                     if (importedState.wiped) delete importedState.wiped;
                     if (!importedState.settings) importedState.settings = {};
 
-                    // Просто берем весь загруженный объект как есть и сохраняем
                     currentState = importedState;
                     await DashboardData.save(currentState);
                     location.reload();
