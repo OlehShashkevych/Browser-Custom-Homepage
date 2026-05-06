@@ -79,7 +79,7 @@ Created with ❤️ by **Oleh Shashkevych**
 
 * GitHub: [@OlehShashkevych](https://github.com/OlehShashkevych)
 * Website: [shashkevych.com](https://shashkevych.com)
-* Live Demo: [home.shashkevych.com](https://home.shashkevych.com/)
+* Live: [home.shashkevych.com](https://home.shashkevych.com/)
 
 ## 🤝 Contributing
 
