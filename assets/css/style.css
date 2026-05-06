@@ -8,10 +8,9 @@
 }
 
 body {
-    /* Дефолтный синий цвет на долю секунды, пока считается настоящий */
     --accent-rgb: 168, 199, 250;
 
-    /* Универсальные переменные */
+    /* Universal variables */
     --card-bg: rgba(20, 20, 25, 0.45);
     --card-border: rgba(var(--accent-rgb), 0.15);
     --group-bg: rgba(30, 30, 35, 0.55);
@@ -461,7 +460,6 @@ body {
     left: 0;
     width: 100%;
 
-    /* Перенесли фон и блюр прямо сюда: */
     background: rgba(30, 30, 35, 0.45);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
@@ -570,7 +568,7 @@ body.edit-mode .btn-open-all {
     display: none;
 }
 
-/* Кнопки Edit/Delete на карточках */
+/* Edit/Delete buttons on cards */
 .card-controls {
     position: absolute;
     top: -10px;
@@ -624,7 +622,7 @@ body.edit-mode .draggable-item.dragging .card-controls {
     color: #ff6b6b;
 }
 
-/* Заголовок Воркспейса и карандаш */
+/* Workspace title and edit pencil */
 .workspace-title-wrapper {
     display: flex;
     align-items: center;
@@ -646,7 +644,6 @@ body.edit-mode .draggable-item.dragging .card-controls {
     transition: all 0.3s var(--bezier);
 }
 
-/* В режиме редактирования заголовок выглядит как кнопка */
 body.edit-mode .workspace-title {
     cursor: pointer;
     background: rgba(255, 255, 255, 0.05);
@@ -659,7 +656,7 @@ body.edit-mode .workspace-title:hover {
     border-color: var(--accent);
 }
 
-/* Стрелочки влево/вправо */
+/* Left/right arrows */
 .ws-move-btn {
     background: transparent;
     border: none;
@@ -693,7 +690,7 @@ body.edit-mode .ws-move-btn:disabled {
     opacity: 0.1 !important;
 }
 
-/* FAB - Режим редактирования */
+/* FAB - Edit mode */
 .fab-edit {
     position: fixed;
     bottom: 3rem;
@@ -726,7 +723,7 @@ body.edit-mode .fab-edit {
     height: 24px;
 }
 
-/* FAB - Добавление Воркспейса */
+/* FAB - Add workspace */
 .fab-add-ws {
     position: fixed;
     top: 50%;
@@ -766,7 +763,7 @@ body.edit-mode .fab-add-ws {
     height: 20px;
 }
 
-/* Карточка "Добавить Элемент" */
+/* Add Item card */
 .card-add {
     display: none;
     height: 64px;
@@ -791,12 +788,11 @@ body.edit-mode .card-add {
     background: rgba(var(--accent-rgb), 0.1);
 }
 
-/* FAB - Настройки */
+/* FAB - Settings */
 .fab-settings {
     position: fixed;
     bottom: 3rem;
     right: 8.5rem;
-    /* Слева от кнопки редактирования */
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -909,7 +905,7 @@ body.edit-mode .card-add {
     margin-bottom: 0.5rem;
 }
 
-/* Базовые кнопки UI */
+/* Basic UI buttons */
 .btn-secondary,
 #btnAddSubLink {
     background: transparent;
@@ -946,7 +942,7 @@ body.edit-mode .card-add {
     background: rgba(255, 107, 107, 0.25) !important;
 }
 
-/* Кнопки перемещения ссылок внутри модалки группы */
+/* Move buttons inside group modal */
 .sub-link-controls {
     display: flex;
     flex-direction: column;
@@ -980,12 +976,44 @@ body.edit-mode .card-add {
     pointer-events: none;
 }
 
+/* Wide modal for settings */
+.settings-card {
+    max-width: 700px !important;
+    width: 90%;
+    max-height: 85dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--accent-rgb), 0.5) transparent;
+}
+
+.settings-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-rgb), 0.5);
+    border-radius: 10px;
+}
+
+.settings-footer {
+    flex: none;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* =========================================
    8. MOBILE RESPONSIVENESS
    ========================================= */
 @media (max-width: 768px) {
 
-    /* Виджеты выстраиваем в колонку */
     .widgets {
         top: 1.5rem;
         left: 1.5rem;
@@ -996,7 +1024,6 @@ body.edit-mode .card-add {
         align-items: center;
     }
 
-    /* Часы - 1 колонка, 1 строка */
     .time-widget {
         grid-column: 1;
         grid-row: 1;
@@ -1005,7 +1032,6 @@ body.edit-mode .card-add {
 
     .time-widget__clock {
         font-size: 3.5rem;
-        /* Чуть уменьшили, чтобы влезло с погодой */
         letter-spacing: -2px;
     }
 
@@ -1018,7 +1044,6 @@ body.edit-mode .card-add {
         display: contents;
     }
 
-    /* Погода - 2 колонка, 1 строка */
     .info-widget>.info-item:first-child {
         grid-column: 2;
         grid-row: 1;
@@ -1026,7 +1051,6 @@ body.edit-mode .card-add {
         text-align: right;
     }
 
-    /* Формула 1 - Растягиваем на обе колонки на 2 строку */
     .info-widget>.info-item:last-child {
         grid-column: 1 / -1;
         grid-row: 2;
@@ -1034,9 +1058,7 @@ body.edit-mode .card-add {
         text-align: center;
     }
 
-    /* Воркспейс: разрешаем вертикальный скролл, если карточек очень много */
     .workspace {
-        /* Используем ту же переменную, но сбрасываем центрирование */
         padding-top: calc(var(--header-height, 150px) + 1.5rem);
         padding-bottom: calc(3rem + 50px);
         /* justify-content: flex-start; */
@@ -1058,7 +1080,7 @@ body.edit-mode .card-add {
         margin-bottom: 1.5rem;
     }
 
-    /* УМЕНЬШАЕМ РАЗМЕРЫ КАРТОЧЕК НА МОБИЛКАХ */
+    /* REDUCE CARD SIZES ON MOBILE */
     .draggable-item {
         height: 52px;
         border-radius: 12px;
@@ -1107,7 +1129,7 @@ body.edit-mode .card-add {
         font-size: 0.85rem;
     }
 
-    /* ПЛАВАЮЩИЕ КНОПКИ */
+    /* FLOATING BUTTONS */
     .fab-edit {
         bottom: 1.5rem;
         right: 1.5rem;
@@ -1134,7 +1156,7 @@ body.edit-mode .card-add {
         height: 50px;
     }
 
-    /* МИНИАТЮРНАЯ КНОПКА ПОИСКА (ПРЕВРАЩАЕМ В КРУГЛУЮ ИКОНКУ) */
+    /* MINIATURE SEARCH BUTTON (TURN INTO ROUND ICON) */
     .search-trigger {
         bottom: 1.5rem;
         left: 50%;
@@ -1144,13 +1166,11 @@ body.edit-mode .card-add {
         padding: 0;
         border-radius: 50%;
         font-size: 0;
-        /* Прячем текст "Ask AI..." */
         display: flex;
         justify-content: center;
         align-items: center;
     }
 
-    /* Добавляем иконку лупы вместо текста */
     .search-trigger::after {
         content: '';
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
@@ -1165,7 +1185,7 @@ body.edit-mode .card-add {
         transform: translateX(-50%) translateY(-3px);
     }
 
-    /* Оверлеи и модалки */
+    /* Overlays and modals */
     .modal-card,
     .auth-card {
         padding: 1.5rem;

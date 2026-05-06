@@ -26,35 +26,41 @@ const defaultState = {
     settings: {
         showClock: true,
         showWeather: true,
-        showF1: true
+        showF1: true,
+        showSearch: true,
+        searchEngine: 'duckduckgo'
     },
     workspaces: [
         {
             id: "ws-1",
-            title: "Base / Life",
+            title: "Daily",
             items: [
-                { id: "item-wp", type: "icon", title: "Wikipedia", url: "https://wikipedia.org", icon: "https://icon.horse/icon/wikipedia.org" },
                 { id: "item-ff", type: "single", title: "Firefox", url: "https://firefox.com", icon: "https://icon.horse/icon/firefox.com" },
+                { id: "item-dl", type: "single", title: "DeepL Translate", url: "https://www.deepl.com", icon: "https://icon.horse/icon/deepl.com" },
+                { id: "item-bw", type: "icon", title: "Bitwarden", url: "https://bitwarden.com", icon: "https://icon.horse/icon/bitwarden.com" },
+                { id: "item-osm", type: "icon", title: "OpenStreetMap", url: "https://www.openstreetmap.org", icon: "https://icon.horse/icon/openstreetmap.org" },
                 {
-                    id: "group-1", type: "group", title: "Google Apps",
+                    id: "group-1", type: "group", title: "Knowledge",
                     links: [
-                        { id: "sub-1", title: "Gmail", url: "https://mail.google.com", icon: "https://icon.horse/icon/mail.google.com" },
-                        { id: "sub-2", title: "Calendar", url: "https://calendar.google.com", icon: "https://icon.horse/icon/calendar.google.com" }
+                        { id: "sub-1", title: "Wikipedia", url: "https://wikipedia.org", icon: "https://icon.horse/icon/wikipedia.org" },
+                        { id: "sub-2", title: "Internet Archive", url: "https://archive.org", icon: "https://icon.horse/icon/archive.org" }
                     ]
                 }
             ]
         },
         {
             id: "ws-2",
-            title: "Dev / Projects",
+            title: "Creator",
             items: [
-                { id: "item-github", type: "single", title: "GitHub", url: "https://github.com", icon: "https://icon.horse/icon/github.com" }
+                { id: "item-os", type: "single", title: "Shashkevych Studio", url: "https://shashkevych.com", icon: "https://shashkevych.com/wp-content/uploads/2025/07/Screenshot_20250731_122011.png" },
+                { id: "item-al", type: "single", title: "Albina (Photo & Video)", url: "https://albina.shashkevych.com", icon: "https://albina.shashkevych.com/wp-content/uploads/2026/01/cropped-logo-192x192.webp" },
+                { id: "item-kofi", type: "single", title: "Ko-fi", url: "https://ko-fi.com/iamoleh", icon: "https://icon.horse/icon/ko-fi.com" },
+                { id: "item-pr", type: "single", title: "Privacy Policy", url: "https://home.shashkevych.com/privacy.html", icon: "https://home.shashkevych.com/assets/icon-192.png" }
             ]
         }
     ]
 };
 
-// Функция для защиты от XSS
 function escapeHTML(str) {
     if (!str) return '';
     return str.replace(/[&<>'"]/g, tag => ({
@@ -176,7 +182,6 @@ const DashboardData = {
             const res = await apiRequest('get_state');
             if (res && res.status === 'success') {
                 console.log('📦 Data loaded from DB:', res.data);
-                // Сохраняем свежую копию в локальный кэш
                 localStorage.setItem('offline_state', JSON.stringify(res.data));
                 return res.data;
             } else {
@@ -186,7 +191,6 @@ const DashboardData = {
                 return null;
             }
         } catch (e) {
-            // ЕСЛИ ИНТЕРНЕТА НЕТ (ошибка сети):
             console.warn('📶 Network offline. Loading local cache...');
             const localData = localStorage.getItem('offline_state');
             if (localData) {
@@ -197,7 +201,6 @@ const DashboardData = {
     },
 
     async save(stateObj) {
-        // Сначала всегда сохраняем локально
         localStorage.setItem('offline_state', JSON.stringify(stateObj));
 
         try {
@@ -209,9 +212,8 @@ const DashboardData = {
             }
             return res;
         } catch (e) {
-            // Если сохраняем без сети - не выдаем ошибку пользователю
             console.warn('📶 Network offline. State saved locally. Will sync later.');
-            return { status: 'success' }; // Имитируем успех, чтобы UI обновился
+            return { status: 'success' };
         }
     }
 };
@@ -309,13 +311,16 @@ btnRegister.addEventListener('click', async () => {
 // 4. RENDER ENGINE
 // =========================================
 function applyWidgetSettings() {
-    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
+    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'google' };
 
-    document.querySelector('.time-widget').style.display = s.showClock ? 'flex' : 'none';
+    document.querySelector('.time-widget').style.display = s.showClock !== false ? 'flex' : 'none';
 
     const infoItems = document.querySelectorAll('.info-item');
-    if (infoItems[0]) infoItems[0].style.display = s.showWeather ? 'flex' : 'none';
-    if (infoItems[1]) infoItems[1].style.display = s.showF1 ? 'flex' : 'none';
+    if (infoItems[0]) infoItems[0].style.display = s.showWeather !== false ? 'flex' : 'none';
+    if (infoItems[1]) infoItems[1].style.display = s.showF1 !== false ? 'flex' : 'none';
+
+    const searchBtn = document.getElementById('searchTrigger');
+    if (searchBtn) searchBtn.style.display = s.showSearch !== false ? 'flex' : 'none';
 
     setTimeout(updateWorkspacePadding, 50);
 }
@@ -336,7 +341,7 @@ function buildWorkspaces(state) {
         section.className = 'workspace';
         section.dataset.id = ws.id;
 
-        const safeWsTitle = escapeHTML(ws.title); // XSS Защита
+        const safeWsTitle = escapeHTML(ws.title);
 
         const titleWrapper = document.createElement('div');
         titleWrapper.className = 'workspace-title-wrapper';
@@ -352,7 +357,7 @@ function buildWorkspaces(state) {
         grid.id = `grid-${index + 1}`;
 
         ws.items.forEach(item => {
-            const safeItemTitle = escapeHTML(item.title); // XSS Защита
+            const safeItemTitle = escapeHTML(item.title);
 
             const controlsHTML = `
                 <div class="card-controls">
@@ -377,7 +382,7 @@ function buildWorkspaces(state) {
                 `;
             } else if (item.type === 'group') {
                 const subLinksHTML = item.links.map(sub => {
-                    const safeSubTitle = escapeHTML(sub.title); // XSS Защита
+                    const safeSubTitle = escapeHTML(sub.title);
                     return `
                     <a href="${sub.url}" class="sub-link" data-id="${sub.id}">
                         <img src="${sub.icon}" alt="${safeSubTitle}"> ${safeSubTitle}
@@ -518,12 +523,12 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
-// --- СВАЙПЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ПРИЛИПАНИЕ К ПАЛЬЦУ + GPU УСКОРЕНИЕ) ---
+// --- MOBILE SWIPES (STICKY TO FINGER + GPU ACCELERATION) ---
 let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
 let swipeDirectionDetermined = false;
-let cachedViewportWidth = 0; // Кэшируем ширину экрана для Firefox
+let cachedViewportWidth = 0;
 
 document.addEventListener('touchstart', e => {
     if (isScrolling ||
@@ -538,7 +543,6 @@ document.addEventListener('touchstart', e => {
     isSwiping = true;
     swipeDirectionDetermined = false;
 
-    // Запоминаем ширину один раз при касании (спасает FPS в Firefox)
     cachedViewportWidth = window.innerWidth;
 
     slider.classList.add('swiping');
@@ -559,7 +563,7 @@ document.addEventListener('touchmove', e => {
             swipeDirectionDetermined = 'vertical';
             isSwiping = false;
             slider.classList.remove('swiping');
-            slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`; // Используем 3D
+            slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`;
             return;
         } else {
             return;
@@ -567,7 +571,6 @@ document.addEventListener('touchmove', e => {
     }
 
     if (swipeDirectionDetermined === 'horizontal') {
-        // Считаем чистые пиксели без calc()
         const currentTranslate = -(currentSlide * cachedViewportWidth) - diffX;
         slider.style.transform = `translate3d(${currentTranslate}px, 0, 0)`;
     }
@@ -600,7 +603,6 @@ document.addEventListener('touchend', e => {
 
 function moveSlider() {
     isScrolling = true;
-    // translate3d заставляет телефон рендерить слой на видеокарте
     slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`;
 
     document.querySelectorAll('.bg-layer').forEach((bg, index) => {
@@ -609,7 +611,6 @@ function moveSlider() {
 
     document.body.style.setProperty('--accent-rgb', dynamicAccents[currentSlide] || '168, 199, 250');
 
-    // Разблокируем скролл быстрее (под новую CSS-анимацию 0.5s)
     setTimeout(() => { isScrolling = false; }, 500);
 }
 
@@ -620,8 +621,8 @@ function triggerBounce(direction) {
 
     setTimeout(() => {
         slider.style.transform = `translate3d(-${currentSlide * 100}vw, 0, 0)`;
-        setTimeout(() => { isScrolling = false; }, 400); // Разблокируем быстрее
-    }, 200); // Отскок более резкий и приятный
+        setTimeout(() => { isScrolling = false; }, 400);
+    }, 200);
 }
 
 // =========================================
@@ -811,13 +812,32 @@ searchForm.addEventListener('submit', (e) => {
     const q = searchInput.value.trim();
     if (!q) return;
 
-    if (q.toLowerCase().startsWith('c ')) {
-        window.location.href = `https://chatgpt.com/?q=${encodeURIComponent(q.substring(2))}`;
-    } else {
-        window.location.href = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
-    }
-});
+    const engine = (currentState.settings && currentState.settings.searchEngine) ? currentState.settings.searchEngine : 'google';
+    let url = '';
 
+    switch (engine) {
+        case 'duckduckgo':
+            url = `https://duckduckgo.com/?q=${encodeURIComponent(q)}`;
+            break;
+        case 'perplexity':
+            url = `https://www.perplexity.ai/search?q=${encodeURIComponent(q)}`;
+            break;
+        case 'startpage':
+            url = `https://www.startpage.com/sp/search?query=${encodeURIComponent(q)}`;
+            break;
+        case 'ecosia':
+            url = `https://www.ecosia.org/search?q=${encodeURIComponent(q)}`;
+            break;
+        case 'bing':
+            url = `https://www.bing.com/search?q=${encodeURIComponent(q)}`;
+            break;
+        case 'google':
+        default:
+            url = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+    }
+
+    window.location.href = url;
+});
 
 // =========================================
 // 9. WIDGETS (CLOCK, F1, WEATHER)
@@ -905,7 +925,7 @@ btnAddSubLink.addEventListener('click', () => {
 function addSubLinkDOM(title, url) {
     const div = document.createElement('div');
     div.className = 'sub-link-row';
-    const safeTitle = escapeHTML(title); // XSS Защита для инпутов
+    const safeTitle = escapeHTML(title);
     div.innerHTML = `
         <div class="sub-link-controls">
             <button type="button" class="btn-move-sub" onclick="moveSubLink(this, -1)" title="Move Up">▲</button>
@@ -1009,14 +1029,14 @@ itemForm.addEventListener('submit', async (e) => {
         ws.items.push(newItem);
     }
 
-    console.log("💾 Отправляем данные в БД:", currentState);
+    console.log("💾 Sending data to DB:", currentState);
     const result = await DashboardData.save(currentState);
 
     if (result && result.status === 'success') {
         itemModal.classList.remove('active');
         buildWorkspaces(currentState);
     } else {
-        alert("Ошибка сохранения в базу!");
+        alert("Error saving to database!");
     }
 });
 
@@ -1144,7 +1164,7 @@ async function moveWorkspace(wsId, direction) {
     moveSlider();
 }
 
-// --- Загрузка локальных обоев (Base64) ---
+// --- Load local wallpapers (Base64) ---
 document.getElementById('btnUploadBg').addEventListener('click', () => {
     document.getElementById('inputUploadBg').click();
 });
@@ -1166,7 +1186,7 @@ document.getElementById('inputUploadBg').addEventListener('change', (e) => {
 });
 
 // =========================================
-// ДИНАМИЧЕСКАЯ ВЫСОТА ШАПКИ
+// 11. DYNAMIC HEADER HEIGHT
 // =========================================
 function updateWorkspacePadding() {
     const header = document.querySelector('.widgets');
@@ -1181,17 +1201,29 @@ updateWorkspacePadding();
 setTimeout(updateWorkspacePadding, 1000);
 
 // =========================================
-// НАСТРОЙКИ, БЭКАПЫ И ЛОГАУТ
+// 12. SETTINGS, BACKUPS AND LOGOUT
 // =========================================
 const settingsModal = document.getElementById('settingsModal');
 
 if (document.getElementById('btnSettings')) {
     document.getElementById('btnSettings').addEventListener('click', () => {
-        const s = currentState.settings || { showClock: true, showWeather: true, showF1: true };
-        document.getElementById('settShowClock').checked = s.showClock;
-        document.getElementById('settShowWeather').checked = s.showWeather;
-        document.getElementById('settShowF1').checked = s.showF1;
+        const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'google' };
+
+        document.getElementById('settShowClock').checked = s.showClock !== false;
+        document.getElementById('settShowWeather').checked = s.showWeather !== false;
+        document.getElementById('settShowF1').checked = s.showF1 !== false;
+        document.getElementById('settShowSearch').checked = s.showSearch !== false;
+        document.getElementById('settSearchEngine').value = s.searchEngine || 'google';
+
+        document.getElementById('searchEngineGroup').style.display = s.showSearch !== false ? 'block' : 'none';
+
         settingsModal.classList.add('active');
+    });
+}
+
+if (document.getElementById('settShowSearch')) {
+    document.getElementById('settShowSearch').addEventListener('change', (e) => {
+        document.getElementById('searchEngineGroup').style.display = e.target.checked ? 'block' : 'none';
     });
 }
 
@@ -1207,6 +1239,8 @@ if (document.getElementById('btnSaveSettings')) {
         currentState.settings.showClock = document.getElementById('settShowClock').checked;
         currentState.settings.showWeather = document.getElementById('settShowWeather').checked;
         currentState.settings.showF1 = document.getElementById('settShowF1').checked;
+        currentState.settings.showSearch = document.getElementById('settShowSearch').checked;
+        currentState.settings.searchEngine = document.getElementById('settSearchEngine').value;
 
         applyWidgetSettings();
         await DashboardData.save(currentState);
@@ -1214,7 +1248,6 @@ if (document.getElementById('btnSaveSettings')) {
     });
 }
 
-// Экспорт JSON
 if (document.getElementById('btnExportJson')) {
     document.getElementById('btnExportJson').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentState, null, 2));
@@ -1227,7 +1260,6 @@ if (document.getElementById('btnExportJson')) {
     });
 }
 
-// Импорт JSON
 if (document.getElementById('btnImportJsonTrigger')) {
     document.getElementById('btnImportJsonTrigger').addEventListener('click', () => document.getElementById('inputImportJson').click());
 }
@@ -1251,7 +1283,6 @@ if (document.getElementById('inputImportJson')) {
     });
 }
 
-// Кнопка логаута
 if (document.getElementById('btnLogout')) {
     document.getElementById('btnLogout').addEventListener('click', () => {
         Auth.logout();
@@ -1259,26 +1290,21 @@ if (document.getElementById('btnLogout')) {
 }
 
 // =========================================
-// АВТО-СИНХРОНИЗАЦИЯ МЕЖДУ УСТРОЙСТВАМИ
+// 13. AUTO-SYNC BETWEEN DEVICES
 // =========================================
 document.addEventListener('visibilitychange', async () => {
-    // Срабатывает, когда ты возвращаешься на вкладку (разблокировал телефон / перешел с другой вкладки ПК)
     if (document.visibilityState === 'visible' && localStorage.getItem('homepage_token')) {
-        // Мы не синхронизируем, если ты прямо сейчас редактируешь закладки (чтобы не сбить твои действия)
         if (editMode || document.querySelector('.modal-overlay.active')) return;
 
         const freshData = await DashboardData.load();
         if (freshData) {
-            // Если данные на сервере отличаются от тех, что у нас на экране
             if (JSON.stringify(freshData) !== JSON.stringify(currentState)) {
                 console.log('🔄 Data changed on another device! Syncing...');
                 currentState = freshData;
 
-                // Перерисовываем интерфейс с новыми данными
                 buildWorkspaces(currentState);
                 applyWidgetSettings();
 
-                // Если мы стояли на экране, которого больше нет — возвращаемся на первый
                 if (currentSlide >= currentState.workspaces.length) {
                     currentSlide = currentState.workspaces.length > 0 ? currentState.workspaces.length - 1 : 0;
                     moveSlider();
@@ -1291,7 +1317,7 @@ document.addEventListener('visibilitychange', async () => {
 // INITIALIZE APP
 initApp();
 
-// --- РЕГИСТРАЦИЯ PWA SERVICE WORKER ---
+// --- PWA SERVICE WORKER REGISTRATION ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(reg => {

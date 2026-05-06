@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - HomeSpace</title>
+    <link rel="stylesheet" href="assets/css/normalize.css">
+    <style>
+        :root {
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --accent: #a8c7fa;
+            --card-bg: rgba(30, 30, 35, 0.6);
+        }
+
+        body {
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Inter', system-ui, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            background: var(--card-bg);
+            backdrop-filter: blur(25px);
+            padding: 3rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        h2 {
+            font-weight: 500;
+            margin-top: 2rem;
+            font-size: 1.2rem;
+        }
+
+        p,
+        li {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to HomeSpace</a>
+        <h1>Privacy Policy</h1>
+        <p>Last updated: May 2026</p>
+
+        <h2>1. Overview</h2>
+        <p>HomeSpace is a personal start page dashboard. This policy explains how your data is handled. My philosophy is
+            simple: your data belongs to you.</p>
+
+        <h2>2. Data Collection & Storage</h2>
+        <ul>
+            <li><strong>Account Data:</strong> We store your username and a securely hashed version of your password in
+                our database. We never store passwords in plain text.</li>
+            <li><strong>Workspace State:</strong> Your links, groups, and dashboard settings are stored in our database
+                so you can access them across devices.</li>
+            <li><strong>Local Storage:</strong> We use browser Local Storage and Cache to enable PWA features and
+                offline access. This stays on your device.</li>
+        </ul>
+
+        <h2>3. Third-Party Services</h2>
+        <p>HomeSpace interacts with a few external APIs to provide widgets:</p>
+        <ul>
+            <li><strong>Weather:</strong> Provided by Open-Meteo (no personal data sent).</li>
+            <li><strong>F1 Data:</strong> Provided by Ergast/Jolpi API.</li>
+            <li><strong>Icons:</strong> Icons are fetched via Icon.horse or directly from the respective websites.</li>
+        </ul>
+
+        <h2>4. Security</h2>
+        <p>We use HTTPS for all communications. While we implement industry-standard protections (SQL injection
+            prevention, XSS filtering), no system is 100% secure. We encourage using a unique password for this service.
+        </p>
+
+        <h2>5. Contact</h2>
+        <p>If you have questions about your data, feel free to contact me via <a href="https://shashkevych.com"
+                style="color:var(--accent)">shashkevych.com</a>.</p>
+    </div>
+</body>
+
+</html>

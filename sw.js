@@ -10,23 +10,21 @@ const ASSETS_TO_CACHE = [
     './assets/js/scroll-behaviour.js',
 ];
 
-// Установка Service Worker и кэширование файлов
+// Install Service Worker and cache files
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
     );
 });
 
-// Перехват запросов (если нет сети — отдаем из кэша)
+// Intercept requests
 self.addEventListener('fetch', event => {
-    // API запросы не кэшируем, их обрабатывает сам script.js
     if (event.request.url.includes('api.php')) return;
 
     event.respondWith(
         caches.match(event.request).then(response => {
             return response || fetch(event.request);
         }).catch(() => {
-            // Если совсем нет сети и файла нет в кэше — молчим
         })
     );
 });

@@ -1,7 +1,7 @@
 <?php
 // api.php
 
-// 1. НАСТРОЙКИ CORS
+// 1. CORS SETTINGS
 $allowed_origins = [
     'http://127.0.0.1:5500',
     'http://localhost:5500', 
@@ -18,7 +18,7 @@ header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Headers: Authorization, Content-Type');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 
-// Быстрый ответ на preflight-запросы
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit(0);
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once 'config.php';
 
-// 2. ПОДКЛЮЧЕНИЕ К БАЗЕ
+// 2. DATABASE CONNECTION
 try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -39,10 +39,10 @@ try {
     exit;
 }
 
-// 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// 3. HELPER FUNCTIONS
 
 /**
- * Универсальный способ вытащить токен из заголовков (работает на Apache, Nginx и др.)
+ * Universal way to extract token from headers
  */
 function getBearerToken() {
     $headers = '';
@@ -52,7 +52,6 @@ function getBearerToken() {
         $headers = trim($_SERVER['Authorization']);
     } elseif (function_exists('apache_request_headers')) {
         $requestHeaders = apache_request_headers();
-        // Приводим ключи к единому регистру для надежности
         $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
         if (isset($requestHeaders['Authorization'])) {
             $headers = trim($requestHeaders['Authorization']);
@@ -68,7 +67,7 @@ function getBearerToken() {
 }
 
 /**
- * Получение ID пользователя по токену из таблицы сессий
+ * Get user ID by token from sessions table
  */
 function getUserId($pdo) {
     $token = getBearerToken();
@@ -79,7 +78,7 @@ function getUserId($pdo) {
     return $stmt->fetchColumn();
 }
 
-// 4. ОБРАБОТКА ЗАПРОСА
+// 4. REQUEST HANDLING
 $request = json_decode(file_get_contents('php://input'), true);
 $action = $request['action'] ?? '';
 
@@ -107,11 +106,9 @@ switch ($action) {
             $stmt->execute([$username, $hash]);
             $userId = $pdo->lastInsertId();
             
-            // Создаем первую сессию
             $pdo->prepare("INSERT INTO user_sessions (user_id, token, expires_at) VALUES (?, ?, ?)")
                 ->execute([$userId, $token, $expiresAt]);
 
-            // Инициализируем пустой стейт
             $pdo->prepare("INSERT INTO workspaces (user_id, state_json) VALUES (?, ?)")
                 ->execute([$userId, json_encode(['workspaces' => []])]);
 
@@ -137,7 +134,6 @@ switch ($action) {
             $newToken = bin2hex(random_bytes(32));
             $expiresAt = date('Y-m-d H:i:s', strtotime('+30 days'));
 
-            // Добавляем новую сессию в таблицу (мульти-сессионность)
             $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, token, expires_at) VALUES (?, ?, ?)");
             $stmt->execute([$user['id'], $newToken, $expiresAt]);
 
@@ -150,7 +146,6 @@ switch ($action) {
     case 'logout':
         $token = getBearerToken();
         if ($token) {
-            // Удаляем из базы именно этот конкретный токен
             $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE token = ?");
             $stmt->execute([$token]);
             echo json_encode(['status' => 'success', 'message' => 'Session terminated']);
@@ -183,7 +178,6 @@ switch ($action) {
         }
 
         $rawJson = json_encode($request['data'] ?? []);
-        // Лимит 5МБ для защиты БД
         if (strlen($rawJson) > 5 * 1024 * 1024) { 
             echo json_encode(['status' => 'error', 'message' => 'Data is too large.']);
             exit;

@@ -57,11 +57,10 @@
 
     </main>
 
-    <div class="search-trigger" id="searchTrigger">Ask AI or Search...</div>
+    <div class="search-trigger" id="searchTrigger">Search...</div>
     <div class="search-overlay" id="searchOverlay">
         <form class="search-form" id="searchForm">
-            <input type="text" class="search-input" id="searchInput" placeholder="What's on your mind?"
-                autocomplete="off">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search the web..." autocomplete="off">
         </form>
     </div>
 
@@ -176,40 +175,64 @@
     </div>
 
     <div class="modal-overlay" id="settingsModal">
-        <div class="modal-card">
+        <div class="modal-card settings-card">
             <h3>Dashboard Settings</h3>
 
-            <div class="form-group">
-                <label>Visible Widgets</label>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
-                        <input type="checkbox" id="settShowClock"> Clock & Date
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
-                        <input type="checkbox" id="settShowWeather"> Weather
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
-                        <input type="checkbox" id="settShowF1"> Formula 1
-                    </label>
+            <div class="settings-content">
+                <div class="form-group">
+                    <label>Visible Widgets</label>
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                            <input type="checkbox" id="settLocalOnly"> Local Only Mode (No Cloud Sync)
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                            <input type="checkbox" id="settShowClock"> Clock & Date
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                            <input type="checkbox" id="settShowWeather"> Weather
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                            <input type="checkbox" id="settShowF1"> Formula 1
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: white;">
+                            <input type="checkbox" id="settShowSearch"> Search Bar
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;" id="searchEngineGroup">
+                    <label>Search Engine</label>
+                    <select id="settSearchEngine">
+                        <option value="duckduckgo">DuckDuckGo</option>
+                        <option value="perplexity">Perplexity AI</option>
+                        <option value="startpage">Startpage</option>
+                        <option value="ecosia">Ecosia</option>
+                        <option value="bing">Bing</option>
+                        <option value="google">Google</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>Data & Backup</label>
+                    <div class="auth-actions" style="margin-top: 10px;">
+                        <button type="button" id="btnExportJson" class="btn-secondary btn-small">Export JSON</button>
+                        <button type="button" id="btnImportJsonTrigger" class="btn-secondary btn-small">Import
+                            JSON</button>
+                        <input type="file" id="inputImportJson" style="display: none;" accept=".json">
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top: 1.5rem;">
-                <label>Data & Backup</label>
-                <div class="auth-actions" style="margin-top: 10px;">
-                    <button type="button" id="btnExportJson" class="btn-secondary btn-small">Export JSON</button>
-                    <button type="button" id="btnImportJsonTrigger" class="btn-secondary btn-small">Import JSON</button>
-                    <input type="file" id="inputImportJson" style="display: none;" accept=".json">
+            <div class="settings-footer">
+                <div class="auth-actions" style="margin-top: 2rem;">
+                    <button type="button" id="btnSaveSettings">Save Settings</button>
+                    <button type="button" class="btn-secondary" id="btnCancelSettings">Cancel</button>
                 </div>
-            </div>
 
-            <div class="auth-actions" style="margin-top: 2rem;">
-                <button type="button" id="btnSaveSettings">Save Settings</button>
-                <button type="button" class="btn-secondary" id="btnCancelSettings">Cancel</button>
-            </div>
-
-            <div style="margin-top: 1rem; text-align: center;">
-                <button type="button" class="btn-danger btn-small" id="btnLogout" style="width: 100%;">Log Out</button>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button type="button" class="btn-danger btn-small" id="btnLogout" style="width: 100%;">Log
+                        Out</button>
+                </div>
             </div>
         </div>
     </div>
