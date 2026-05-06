@@ -188,6 +188,16 @@ switch ($action) {
 
         echo json_encode(['status' => 'success']);
         break;
+    
+    case 'wipe_cloud_data':
+        $userId = getUserId($pdo);
+        if ($userId) {
+            $emptyState = json_encode(['wiped' => true, 'workspaces' => []]);
+            $stmt = $pdo->prepare("UPDATE workspaces SET state_json = ? WHERE user_id = ?");
+            $stmt->execute([$emptyState, $userId]);
+            echo json_encode(['status' => 'success']);
+        }
+        break;
 
     default:
         http_response_code(400);

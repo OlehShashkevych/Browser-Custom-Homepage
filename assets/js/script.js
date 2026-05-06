@@ -28,7 +28,8 @@ const defaultState = {
         showWeather: true,
         showF1: true,
         showSearch: true,
-        searchEngine: 'duckduckgo'
+        searchEngine: 'duckduckgo',
+        isLocalOnly: false
     },
     workspaces: [
         {
@@ -146,6 +147,60 @@ async function apiRequest(action, data = {}) {
     }
 }
 
+const DashboardData = {
+    async load() {
+        const localDataStr = localStorage.getItem('offline_state');
+        const localData = localDataStr ? JSON.parse(localDataStr) : null;
+
+        if (localData && localData.settings && localData.settings.isLocalOnly) {
+            console.log('🔒 Local Only Mode active. Loading from localStorage...');
+            return localData;
+        }
+
+        try {
+            const res = await apiRequest('get_state');
+            if (res && res.status === 'success') {
+                console.log('📦 Data loaded from DB:', res.data);
+                localStorage.setItem('offline_state', JSON.stringify(res.data));
+                return res.data;
+            } else {
+                if (res && res.message && (res.message.includes('expired') || res.message.includes('authorized'))) {
+                    Auth.logout();
+                }
+                return null;
+            }
+        } catch (e) {
+            console.warn('📶 Network offline. Loading local cache...');
+            return localData;
+        }
+    },
+
+    async save(stateObj) {
+        localStorage.setItem('offline_state', JSON.stringify(stateObj));
+
+        if (stateObj.settings && stateObj.settings.isLocalOnly) {
+            console.log('💾 Saved locally. Wiping cloud data...');
+            try {
+                await apiRequest('wipe_cloud_data');
+            } catch (e) { }
+            return { status: 'success' };
+        }
+
+        try {
+            const res = await apiRequest('save_state', { data: stateObj });
+            if (res && res.status === 'success') {
+                console.log('💾 State successfully saved to DB!');
+            } else {
+                console.error('❌ Failed to save state:', res ? res.message : 'Unknown error');
+            }
+            return res;
+        } catch (e) {
+            console.warn('📶 Network offline. State saved locally. Will sync later.');
+            return { status: 'success' };
+        }
+    }
+};
+
 const Auth = {
     async register(username, password) {
         const res = await apiRequest('register', { username, password });
@@ -176,48 +231,6 @@ const Auth = {
     }
 };
 
-const DashboardData = {
-    async load() {
-        try {
-            const res = await apiRequest('get_state');
-            if (res && res.status === 'success') {
-                console.log('📦 Data loaded from DB:', res.data);
-                localStorage.setItem('offline_state', JSON.stringify(res.data));
-                return res.data;
-            } else {
-                if (res && res.message && (res.message.includes('expired') || res.message.includes('authorized'))) {
-                    Auth.logout();
-                }
-                return null;
-            }
-        } catch (e) {
-            console.warn('📶 Network offline. Loading local cache...');
-            const localData = localStorage.getItem('offline_state');
-            if (localData) {
-                return JSON.parse(localData);
-            }
-            return null;
-        }
-    },
-
-    async save(stateObj) {
-        localStorage.setItem('offline_state', JSON.stringify(stateObj));
-
-        try {
-            const res = await apiRequest('save_state', { data: stateObj });
-            if (res && res.status === 'success') {
-                console.log('💾 State successfully saved to DB!');
-            } else {
-                console.error('❌ Failed to save state:', res ? res.message : 'Unknown error');
-            }
-            return res;
-        } catch (e) {
-            console.warn('📶 Network offline. State saved locally. Will sync later.');
-            return { status: 'success' };
-        }
-    }
-};
-
 // =========================================
 // 3. CORE INITIALIZATION & AUTH LOGIC
 // =========================================
@@ -244,7 +257,17 @@ async function loadAndRenderWorkspace() {
     const data = await DashboardData.load();
     const authHeading = authOverlay.querySelector('h2');
 
-    if (data && data.workspaces && data.workspaces.length > 0) {
+    if (data && data.wiped) {
+        currentState = { settings: { isLocalOnly: true }, workspaces: [], wiped: true };
+        authOverlay.classList.remove('active');
+
+        if (!localStorage.getItem('offline_state')) {
+            setTimeout(() => {
+                alert("☁️ Cloud data is empty (Local Only mode was used).\n\nPlease import your JSON backup to restore the dashboard.");
+                document.getElementById('settingsModal').classList.add('active');
+            }, 800);
+        }
+    } else if (data && data.workspaces && data.workspaces.length > 0) {
         currentState = data;
         authOverlay.classList.remove('active');
     } else {
@@ -311,7 +334,7 @@ btnRegister.addEventListener('click', async () => {
 // 4. RENDER ENGINE
 // =========================================
 function applyWidgetSettings() {
-    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'google' };
+    const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'duckduckgo' };
 
     document.querySelector('.time-widget').style.display = s.showClock !== false ? 'flex' : 'none';
 
@@ -812,7 +835,7 @@ searchForm.addEventListener('submit', (e) => {
     const q = searchInput.value.trim();
     if (!q) return;
 
-    const engine = (currentState.settings && currentState.settings.searchEngine) ? currentState.settings.searchEngine : 'google';
+    const engine = (currentState.settings && currentState.settings.searchEngine) ? currentState.settings.searchEngine : 'duckduckgo';
     let url = '';
 
     switch (engine) {
@@ -1207,13 +1230,17 @@ const settingsModal = document.getElementById('settingsModal');
 
 if (document.getElementById('btnSettings')) {
     document.getElementById('btnSettings').addEventListener('click', () => {
-        const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'google' };
+        const s = currentState.settings || { showClock: true, showWeather: true, showF1: true, showSearch: true, searchEngine: 'duckduckgo', isLocalOnly: false };
 
         document.getElementById('settShowClock').checked = s.showClock !== false;
         document.getElementById('settShowWeather').checked = s.showWeather !== false;
         document.getElementById('settShowF1').checked = s.showF1 !== false;
         document.getElementById('settShowSearch').checked = s.showSearch !== false;
-        document.getElementById('settSearchEngine').value = s.searchEngine || 'google';
+        document.getElementById('settSearchEngine').value = s.searchEngine || 'duckduckgo';
+
+        if (document.getElementById('settLocalOnly')) {
+            document.getElementById('settLocalOnly').checked = s.isLocalOnly === true;
+        }
 
         document.getElementById('searchEngineGroup').style.display = s.showSearch !== false ? 'block' : 'none';
 
@@ -1241,6 +1268,10 @@ if (document.getElementById('btnSaveSettings')) {
         currentState.settings.showF1 = document.getElementById('settShowF1').checked;
         currentState.settings.showSearch = document.getElementById('settShowSearch').checked;
         currentState.settings.searchEngine = document.getElementById('settSearchEngine').value;
+
+        if (document.getElementById('settLocalOnly')) {
+            currentState.settings.isLocalOnly = document.getElementById('settLocalOnly').checked;
+        }
 
         applyWidgetSettings();
         await DashboardData.save(currentState);
@@ -1273,6 +1304,18 @@ if (document.getElementById('inputImportJson')) {
             try {
                 const importedState = JSON.parse(event.target.result);
                 if (importedState.workspaces) {
+                    if (importedState.wiped) delete importedState.wiped;
+                    if (!importedState.settings) importedState.settings = {};
+
+                    importedState.settings.showClock = document.getElementById('settShowClock').checked;
+                    importedState.settings.showWeather = document.getElementById('settShowWeather').checked;
+                    importedState.settings.showF1 = document.getElementById('settShowF1').checked;
+                    importedState.settings.showSearch = document.getElementById('settShowSearch').checked;
+                    importedState.settings.searchEngine = document.getElementById('settSearchEngine').value;
+
+                    if (document.getElementById('settLocalOnly')) {
+                        importedState.settings.isLocalOnly = document.getElementById('settLocalOnly').checked;
+                    }
                     currentState = importedState;
                     await DashboardData.save(currentState);
                     location.reload();
@@ -1294,7 +1337,7 @@ if (document.getElementById('btnLogout')) {
 // =========================================
 document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && localStorage.getItem('homepage_token')) {
-        if (editMode || document.querySelector('.modal-overlay.active')) return;
+        if (editMode || (currentState && currentState.settings && currentState.settings.isLocalOnly) || document.querySelector('.modal-overlay.active')) return;
 
         const freshData = await DashboardData.load();
         if (freshData) {
